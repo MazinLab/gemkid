@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["version"]
+
+name = "ue1"
+description = "Layout generator for our UltimatE 1 MKID design"
+readme = "README.md"
+
+authors = [
+  {name = "Aled Cuda"},
+  {name = "Mazin Lab contributors"}
+]
+maintainers = [
+  {name = "Aled V. Cuda", email = "aled@ucsb.edu"}
+]
+
+license = {file = "LICENSE.txt"}
+
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.21",
+  "gdstk>=0.9.50"
+]
+
+[tool.setuptools]
+packages = ["mkidgen3"]
+
