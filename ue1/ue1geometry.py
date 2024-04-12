@@ -36,9 +36,9 @@ class InductorConfig:
         regions = self.regions()
         return regions[0][0] + regions[0][1] / 2, regions[1][0] + regions[1][1] / 2
 
-    def draw(self, cellcache={}):
+    def draw(self, port_offset=0.0, cellcache={}):
         regions = self.regions()
-        h = hex(abs(hash(self)))
+        h = hex(abs(hash(self) + hash(port_offset)))
         cellname = "UE1Inductor-{:s}".format(h)
         c = gdstk.Cell(cellname)
         if cellcache is not None:
@@ -102,19 +102,27 @@ class InductorConfig:
         c.add(
             gdstk.rectangle(
                 (0, sum(regions[1][:2]) - self.leg_width),
-                (self.wiring_width, sum(regions[1])),
+                (self.wiring_width, sum(regions[1]) - self.wiring_gap),
                 *self.wiring_layer,
             ),
-        )
-        c.add(
             gdstk.rectangle(
-                (regions[0][0] + self.wiring_gap, sum(regions[1][:2]) + self.wiring_gap),
-                (regions[0][0] + self.wiring_gap + self.wiring_width, sum(regions[1])),
+                (self.wiring_width, sum(regions[1]) - self.wiring_gap - self.wiring_width),
+                (self.wiring_width + port_offset, sum(regions[1]) - self.wiring_gap),
+                *self.wiring_layer
+            ),
+            gdstk.rectangle(
+                (port_offset, sum(regions[1]) - self.wiring_gap),
+                (port_offset + self.wiring_width, sum(regions[1])),
+                *self.wiring_layer
+            ),
+            gdstk.rectangle(
+                (regions[0][0] + self.wiring_gap + port_offset, sum(regions[1][:2]) + self.wiring_gap),
+                (regions[0][0] + self.wiring_gap + self.wiring_width + port_offset, sum(regions[1])),
                 *self.wiring_layer,
             ),
             gdstk.rectangle(
                 (
-                    regions[0][0] + self.wiring_gap + self.wiring_width,
+                    regions[0][0] + self.wiring_gap + self.wiring_width + port_offset,
                     sum(regions[1]) - self.wiring_width - self.wiring_gap,
                 ),
                 (sum(regions[0]), sum(regions[1]) - self.wiring_gap),
@@ -408,13 +416,17 @@ class BoxConfig:
                     *self.coupler_layer,
                 ),
             )
+
             cap_pos = (sum(r[0][:2]), sum(r[1][:2]) - self.capacitor.dimensions[1])
             ind_focus = self.inductor.focus_point
             ind_pos = (self.width / 2 - ind_focus[0], cap_pos[1] - self.inductor.dimensions[1])
-            ind = self.inductor.draw(cellcache=cellcache)
+
+            port_offset = max(0, (cap_pos[0] + self.capacitor.wiring_width - self.inductor.wiring_width) - ind_pos[0])
+
+            ind = self.inductor.draw(port_offset, cellcache=cellcache)
             cap = self.capacitor.draw(
                 capacitor_tunable,
-                (ind_pos[0] - cap_pos[0] + self.inductor.wiring_width, self.inductor.wiring_gap),
+                (ind_pos[0] - cap_pos[0] + self.inductor.wiring_width + port_offset, self.inductor.wiring_gap),
                 cellcache=cellcache,
             )
             subcells.append(ind)
