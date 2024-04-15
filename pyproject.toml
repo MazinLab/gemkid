@@ -26,5 +26,5 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["mkidgen3"]
+packages = ["ue1"]
 
