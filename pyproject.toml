@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 dynamic = ["version"]
 
-name = "ue1"
-description = "Layout generator for our UltimatE 1 MKID design"
+name = "gemkid"
+description = "MKID Layout generator for prototyping our UltimatE 1 MKID design"
 readme = "README.md"
 
 authors = [
@@ -26,5 +26,5 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["mkidgen3"]
+packages = ["gemkid"]
 

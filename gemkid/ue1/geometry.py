@@ -4,6 +4,9 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Optional
 
+from .layers import ATA_NB, HF_BRIDGE
+from ..layers import DrawingLayer
+
 
 @dataclass(eq=True, frozen=True)
 class InductorConfig:
@@ -12,10 +15,10 @@ class InductorConfig:
     leg_length: float = 102.5
     leg_width: float = 1.5
     leg_landing: float = 1.5
-    leg_layer: tuple[int, int] = (1, 0)
+    leg_layer: tuple[int, int] | DrawingLayer  = HF_BRIDGE
     wiring_width: float = 2
     wiring_gap: float = 0.5
-    wiring_layer: tuple[int, int] = (0, 0)
+    wiring_layer: tuple[int, int] | DrawingLayer = ATA_NB
 
     def regions(self):
         topcap = self.wiring_width + self.wiring_gap * 2
@@ -168,9 +171,9 @@ class CapacitorConfig:
     leg_length: tuple[float, float] = (114, 62)
     leg_width: float = 1
     leg_landing: float = 0
-    leg_layer: tuple[int, int] = (0, 0)
+    leg_layer: tuple[int, int] | DrawingLayer = ATA_NB
     wiring_width: float = 5
-    wiring_layer: tuple[int, int] = (0, 0)
+    wiring_layer: tuple[int, int] | DrawingLayer = ATA_NB
 
     @property
     def dimensions(self):
@@ -273,8 +276,8 @@ class FeedlineConfig:
     a: float = 3.5
     b: float = 2
     c: float = 9.5
-    feed_layer: tuple[int, int] = (0, 0)
-    ground_layer: tuple[int, int] = (0, 0)
+    feed_layer: tuple[int, int] | DrawingLayer = ATA_NB
+    ground_layer: tuple[int, int] | DrawingLayer = ATA_NB
 
     @property
     def width(self):
@@ -333,10 +336,10 @@ class BoxConfig:
     feedline: FeedlineConfig
     coupler_width: float = 1.5
     coupler_gap: float = 2.0
-    coupler_layer: tuple[int, int] = (0, 0)
+    coupler_layer: tuple[int, int] | DrawingLayer = ATA_NB
     box_width: float = 2.0
     box_gap: float = 1.0
-    box_layer: tuple[int, int] = (0, 0)
+    box_layer: tuple[int, int] | DrawingLayer = ATA_NB
     width: float = 150
     height: float = 150
 
