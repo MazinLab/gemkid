@@ -5,11 +5,11 @@ from typing import Optional
 
 from .layers import DrawingLayer
 
-from .geometry import FeedlineConfig
+from .geometry import FeedlineConfig, GeomConfigMarker
 
 
 @dataclass(eq=True, frozen=True)
-class InductorConfig:
+class InductorConfig(GeomConfigMarker):
     legs: int
     leg_gap: float
     leg_length: float
@@ -165,7 +165,7 @@ class InductorConfig:
 
 
 @dataclass(eq=True, frozen=True)
-class CapacitorConfig:
+class CapacitorConfig(GeomConfigMarker):
     legs: int
     leg_gap: float
     leg_length: tuple[float, float]
@@ -271,7 +271,7 @@ class CapacitorConfig:
         return c
 
 @dataclass(eq=True, frozen=True)
-class BoxConfig:
+class BoxConfig(GeomConfigMarker):
     inductor: Optional[InductorConfig]
     capacitor: Optional[CapacitorConfig]
     feedline: FeedlineConfig
@@ -311,7 +311,7 @@ class BoxConfig:
             self.inductor is None and self.capacitor is None
         )
         r = self.regions()
-        h = hex(abs(hash(self) + hash(coupler_tunable) + hash(capacitor_tunable)))
+        h = hex(abs(hash((self, coupler_tunable, capacitor_tunable))))
         subcells = []
 
         cellname = ("UE1BoxFlat-{:s}" if flatten else "UE1Box-{:s}").format(h)

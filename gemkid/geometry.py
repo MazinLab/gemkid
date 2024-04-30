@@ -1,11 +1,18 @@
+import abc
+
 import gdstk
 import numpy as np
 
 from dataclasses import dataclass
 from .layers import DrawingLayer
 
+
+class GeomConfigMarker(abc.ABC):
+    pass
+
+
 @dataclass(eq=True, frozen=True)
-class FeedlineConfig:
+class FeedlineConfig(GeomConfigMarker):
     a: float = 3.5
     b: float = 2
     c: float = 9.5
@@ -29,7 +36,7 @@ class FeedlineConfig:
                 cellcache[cellname] = c
         cl = self.draw_half(height=height, ports=ports[0], cellcache=cellcache)
         cr = self.draw_half(height=height, ports=ports[1], cellcache=cellcache)
-        c.add(gdstk.Reference(cl, (self.width_half, height), rotation = np.pi))
+        c.add(gdstk.Reference(cl, (self.width_half, height), rotation=np.pi))
         c.add(gdstk.Reference(cr, (self.width_half, 0)))
         return c.flatten()
 
