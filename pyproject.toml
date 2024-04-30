@@ -25,6 +25,12 @@ dependencies = [
   "gdstk>=0.9.50"
 ]
 
+[project.optional-dependencies]
+simulation = [
+  "pysonnet@git+https://github.com/ld-cd/pysonnet.git",
+  "loopfit@git+https://github.com/zobristnicholas/loopfit.git"
+]
+
 [tool.setuptools]
 packages = ["gemkid"]
 
