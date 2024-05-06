@@ -6,7 +6,7 @@ import pathlib
 import numpy as np
 
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from . import geometry
@@ -61,11 +61,33 @@ class SonnetBrickCond(SonnetDielectric):
 @dataclass(frozen=True, eq=True)
 class SonnetLayer(DrawingLayer, SonnetSerializableProperty):
     level: int
-    properties: SonnetPlanarGeneral | SonnetBrickCond
-    thickness: Optional[float] = None
+    properties: Optional[SonnetPlanarGeneral | SonnetBrickCond]
 
     def pysonnet_args(self) -> dict[str, Any]:
         return {"fill_type": "diagonal", "level": self.level, "name": self.name}
+
+
+@dataclass(frozen=True, eq=True)
+class SonnetMetalLayer(SonnetLayer):
+    thickness: Optional[float] = None
+
+    def pysonnet_args(self) -> dict[str, Any]:
+        a = super().pysonnet_args()
+        a["layer_type"] = "metal"
+        a["polygon_type"] = "metal"
+        return a
+
+
+@dataclass(frozen=True, eq=True)
+class SonnetViaLayer(SonnetLayer):
+    to_level: int
+
+    def pysonnet_args(self) -> dict[str, Any]:
+        a = super().pysonnet_args()
+        a["layer_type"] = "via"
+        a["polygon_type"] = "via"
+        a["to_level"] = self.to_level
+        return a
 
 
 @dataclass(frozen=True, eq=True)
@@ -97,6 +119,7 @@ class Port(SonnetSerializableProperty):
     n: int
     pos: tuple[float, float]
     z0: float | complex = 50.0
+    level: int = 0
 
 
 @dataclass(frozen=True, eq=True)
@@ -108,6 +131,7 @@ class StdPort(Port):
             "x": self.pos[0],
             "y": self.pos[1],
             "resistance": self.z0.real,
+            "level": self.level,
         }
         if self.z0 is complex:
             kwargs["reactance"] = self.z0.imag
@@ -138,6 +162,7 @@ class SonnetOptions(SonnetSerializableProperty):
             "current_density": self.current,
             "resonance_detection": self.resonance_detection,
             "q_accuracy": self.q_accuracy,
+            "memory": "high",
         }
 
 
@@ -213,16 +238,24 @@ class TestbenchABC(abc.ABC):
         for diel in self._dielectric_stack:
             p.add_dielectric(**diel.pysonnet_args())
         for layer in self._layer_stack:
-            if issubclass(layer.properties.__class__, SonnetMetal):
-                p.define_metal(**layer.properties.pysonnet_args(), name=layer.name + "-metal")
-                p.define_technology_layer(
-                    layer_type="metal", material=layer.name + "-metal", **layer.pysonnet_args()
-                )
-                p.add_gdstk_cell("metal", cell, *layer, tech_layer=layer.name)
+            if layer.properties is None:
+                pass
+            elif issubclass(layer.properties.__class__, SonnetMetal):
+                p.define_metal(**layer.properties.pysonnet_args(), name=layer.name)
             else:
                 raise NotImplementedError(
                     "Layer type {:s} not yet implemented".format(repr(layer.properties.__class__))
                 )
+            p.define_technology_layer(
+                material=layer.name if layer.properties is not None else "lossless", **layer.pysonnet_args()
+            )
+            p.add_gdstk_cell(
+                cell=cell,
+                layer=list(layer)[0],
+                datatype=list(layer)[1],
+                **layer.pysonnet_args(),
+                tech_layer=layer.name,
+            )
 
         for port in self._ports:
             p.add_port(**port.pysonnet_args())
@@ -230,9 +263,6 @@ class TestbenchABC(abc.ABC):
         for sweep in self._sweeps:
             p.add_frequency_sweep(**sweep.pysonnet_args())
         p.set_analysis("frequency sweep")
-
-        # TODO: WTF
-        p["control"]["speed"] = 0
         p.set_options(**self._sonnet_options.pysonnet_args())
 
         return p
@@ -257,9 +287,9 @@ class TestbenchABC(abc.ABC):
         self.emit(filename, output_folder).run()
 
 
-@dataclass
+@dataclass(frozen=True, eq=True)
 class LeftFeedlineTestbench(TestbenchABC):
-    cell: gdstk.Cell | list[gdstk.Cell]
+    cell: gdstk.Cell | list[gdstk.Cell] = field(hash=False)
     feedline_config: geometry.FeedlineConfig
     padding: float = 0.5
     stub: float = 10
@@ -275,7 +305,7 @@ class LeftFeedlineTestbench(TestbenchABC):
                 abs(
                     hash(self.cell.name)
                     if type(self.cell) is gdstk.Cell
-                    else sum([hash(i.name) for i in self.cell])
+                    else hash(tuple([hash(i.name) for i in self.cell]))
                 )
             )
             + ".son"
@@ -294,9 +324,14 @@ class LeftFeedlineTestbench(TestbenchABC):
         return ch + self.stub * 2
 
     @property
+    @abc.abstractmethod
+    def _portlevel(self) -> int:
+        pass
+
+    @property
     def _ports(self) -> list[Port]:
         return [
-            StdPort(-1, (self.padding + self.feedline_config.c / 2, 0)),
+            StdPort(-1, (self.padding + self.feedline_config.c / 2, 0), level=self._portlevel),
             StdPort(
                 1,
                 (
@@ -306,6 +341,7 @@ class LeftFeedlineTestbench(TestbenchABC):
                     + self.feedline_config.a / 2,
                     0,
                 ),
+                level=self._portlevel,
             ),
             StdPort(
                 -1,
@@ -316,8 +352,9 @@ class LeftFeedlineTestbench(TestbenchABC):
                     + self.feedline_config.a,
                     0,
                 ),
+                level=self._portlevel,
             ),
-            StdPort(-2, (self.padding + self.feedline_config.c / 2, self.__height())),
+            StdPort(-2, (self.padding + self.feedline_config.c / 2, self.__height()), level=self._portlevel),
             StdPort(
                 2,
                 (
@@ -327,6 +364,7 @@ class LeftFeedlineTestbench(TestbenchABC):
                     + self.feedline_config.a / 2,
                     self.__height(),
                 ),
+                level=self._portlevel,
             ),
             StdPort(
                 -2,
@@ -337,6 +375,7 @@ class LeftFeedlineTestbench(TestbenchABC):
                     + self.feedline_config.a,
                     self.__height(),
                 ),
+                level=self._portlevel,
             ),
         ]
 
@@ -354,7 +393,13 @@ class LeftFeedlineTestbench(TestbenchABC):
             gdstk.Reference(stub, (self.padding, self.__height() - self.stub)),
         )
         leftline = self.feedline_config.draw_half(self.__height() - 2 * self.stub, [], cache)
-        c.add(gdstk.Reference(leftline, (self.feedline_config.width_half + self.padding, self.__height() - self.stub), rotation=np.pi))
+        c.add(
+            gdstk.Reference(
+                leftline,
+                (self.feedline_config.width_half + self.padding, self.__height() - self.stub),
+                rotation=np.pi,
+            )
+        )
         y = self.stub
         if type(self.cell) is gdstk.Cell:
             c.add(gdstk.Reference(self.cell, (self.padding + self.feedline_config.width_half, y)))
