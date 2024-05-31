@@ -2,6 +2,7 @@ import abc
 import gdstk
 import os
 import pathlib
+import hashlib
 
 import numpy as np
 
@@ -303,9 +304,9 @@ class LeftFeedlineTestbench(TestbenchABC):
             "LeftFeedlineTestbench-"
             + hex(
                 abs(
-                    hash(self.cell.name)
+                    int.from_bytes(hashlib.md5(self.cell.name.encode('utf-8')).digest())
                     if type(self.cell) is gdstk.Cell
-                    else hash(tuple([hash(i.name) for i in self.cell]))
+                    else hash(tuple([int.from_bytes(hashlib.md5(i.name.encode('utf-8')).digest()) for i in self.cell]))
                 )
             )
             + ".son"
