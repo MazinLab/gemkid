@@ -54,6 +54,7 @@ class CapacitorConfig(mecstyle.CapacitorConfig):
     leg_layer: DrawingLayer = ATA_NB
     wiring_width: float = 2.0
     wiring_layer: DrawingLayer = ATA_NB
+    extra_height: float = 0.0
 
 
 @dataclass(eq=True, frozen=True)
@@ -63,6 +64,7 @@ class BoxConfig(mecstyle.BoxConfig):
     feedline: FeedlineConfig = FeedlineConfig(feed_layer=ATA_NB, ground_layer=ATA_NB)
     coupler_width: float = 2.0
     coupler_gap: float = 0.5
+    coupler_fill: bool = False
     coupler_layer: DrawingLayer = ATA_NB
     coupler_via: Optional[mecstyle.ViaWire] = None #mecstyle.ViaWire(2.0, HF, False, 2.0, 2.0, ATA_NB, 2.0, 2.0, HF_CONTACT)
     box_width: float = 2.0
