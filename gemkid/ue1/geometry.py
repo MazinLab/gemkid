@@ -26,8 +26,8 @@ class InductorConfig(mecstyle.InductorConfig):
     via_inset: tuple[float, float] = (0, 0.25)
     via_layer: DrawingLayer = HF_CONTACT
 
-    def draw(self, port_offset=0, cellcache=...):
-        c = super().draw(port_offset, cellcache)
+    def draw(self, port_offset=0, variation_layer=None, cellcache=...):
+        c = super().draw(port_offset, variation_layer, cellcache)
         r = self.regions()
         c.add(
             gdstk.rectangle(
@@ -64,6 +64,7 @@ class BoxConfig(mecstyle.BoxConfig):
     coupler_width: float = 2.0
     coupler_gap: float = 0.5
     coupler_layer: DrawingLayer = ATA_NB
+    coupler_via: Optional[mecstyle.ViaWire] = None #mecstyle.ViaWire(2.0, HF, False, 2.0, 2.0, ATA_NB, 2.0, 2.0, HF_CONTACT)
     box_width: float = 2.0
     box_gap: float = 1.0
     box_layer: DrawingLayer = ATA_NB
