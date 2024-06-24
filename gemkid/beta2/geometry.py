@@ -27,9 +27,9 @@ class InductorConfig(mecstyle.InductorConfig):
 @dataclass(eq=True, frozen=True)
 class CapacitorConfig(mecstyle.CapacitorConfig):
     legs: int = 38
-    leg_gap: float = 0.75
+    leg_gap: float = 1.0
     leg_length: tuple[float, float] = (101, 55)
-    leg_width: float = 2.0
+    leg_width: float = 1.5
     leg_landing: float = 0.0
     leg_layer: DrawingLayer = BTA
     wiring_width: float = 12.0
@@ -43,7 +43,7 @@ class BoxConfig(mecstyle.BoxConfig):
     capacitor: Optional[CapacitorConfig]
     feedline: FeedlineConfig = FeedlineConfig(feed_layer=NB, ground_layer=NB)
     coupler_width: float = 1.5
-    coupler_gap: float = 2.0
+    coupler_gap: float = 1.5
     coupler_fill: bool = False
     coupler_layer: DrawingLayer = NB
     coupler_via: Optional[mecstyle.ViaWire] = None

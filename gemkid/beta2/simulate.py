@@ -2,7 +2,7 @@ import gdstk
 
 from dataclasses import dataclass, is_dataclass
 from .. import simulate
-from ..cmd import GeMKIDCMD, SimBulkEstimate, SimCorner, SimEmit, SimRun
+from ..cmd import GeMKIDCMD, SimBulkEstimate, SimCorner, SimEmit, SimOptimize, SimRun
 
 from .layers import (
     NB_SONNET,
@@ -59,11 +59,9 @@ class B2CMD(GeMKIDCMD):
 
 if __name__ == "__main__":
     from .geometry import BoxConfig
-    from ..geometry import GeomConfigMarker
 
     import argparse
     import logging
-    import typing
     import sys
 
     logging.basicConfig(level=logging.INFO)
@@ -80,6 +78,7 @@ if __name__ == "__main__":
             SimRun(),
             SimBulkEstimate(BTA_SONNET, BTA_VAR_SONNET),
             SimCorner(),
+            SimOptimize({"coupler_tunable": 64, "capacitor_tunable": 512}, BTA_SONNET, BTA_VAR_SONNET),
         ],
     )
     runner.run(parser.parse_args())
