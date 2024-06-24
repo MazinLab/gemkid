@@ -349,7 +349,7 @@ class ViaWire:
                     (b[0], b[1] + self.landing_width / 2),
                 ),
             ]
-            bridge = ((a[0], a[1] - self.landing_width / 2), (b[0], b[1] + self.landing_width / 2))
+            bridge = ((a[0], a[1] - self.bridge_width / 2), (b[0], b[1] + self.bridge_width / 2))
         else:
             landings = [
                 (
@@ -361,7 +361,7 @@ class ViaWire:
                     (b[0] + self.landing_width / 2, b[1] - self.landing_length),
                 ),
             ]
-            bridge = ((a[0], a[1] - self.landing_width / 2), (b[0], b[1] + self.landing_width / 2))
+            bridge = ((a[0], a[1] - self.bridge_width / 2), (b[0], b[1] + self.bridge_width / 2))
 
         centers = [
             ((landings[0][1][0] + landings[0][0][0]) / 2, ((landings[0][1][1] + landings[0][0][1])) / 2),
@@ -424,13 +424,18 @@ class BoxConfig(GeomConfigMarker):
         return self.width, self.height
 
     def regions(self):
-        x = [self.feedline.width_half, self.coupler_gap * 2 + self.coupler_width]
+        if self.coupler_via:
+            cgl = self.coupler_gap * 2 + max(self.coupler_via.landing_length, self.coupler_width)
+            cgw = self.coupler_gap * 2 + max(self.coupler_via.landing_width, self.coupler_width)
+        else:
+            cgl = cgw = self.coupler_gap * 2 + self.coupler_width
+        x = [self.feedline.width_half, cgl]
         x.append(self.width - sum(x) - self.box_width - self.box_gap)
         x.append(self.box_width + self.box_gap)
         y = [
             self.box_width + self.box_gap,
-            self.height - 2 * self.box_width - self.box_gap - 2 * self.coupler_gap - self.coupler_width,
-            2 * self.coupler_gap + self.coupler_width,
+            self.height - 2 * self.box_width - self.box_gap - cgw,
+            cgw,
             self.box_width,
         ]
         return x, y
@@ -481,67 +486,73 @@ class BoxConfig(GeomConfigMarker):
                 *self.coupler_via.draw_polys(
                     (
                         self.feedline.a - self.coupler_via.landing_length,
-                        sum(r[1][:2]) + self.coupler_gap + self.coupler_width / 2,
+                        sum(r[1][:2]) + self.coupler_gap + max(self.coupler_via.landing_width, self.coupler_width) / 2,
                     ),
                     (
                         sum(r[0][:2]) - self.coupler_gap,
-                        sum(r[1][:2]) + self.coupler_gap + self.coupler_width / 2,
+                        sum(r[1][:2]) + self.coupler_gap + max(self.coupler_via.landing_width, self.coupler_width) / 2,
                     ),
                 )
             )
         c.add(
             gdstk.rectangle(
-                (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2]) + self.coupler_gap),
-                (sum(r[0][:2]), sum(r[1][:2]) + self.coupler_gap + self.coupler_width),
+                (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:3]) - self.coupler_gap),
+                (sum(r[0][:2]), sum(r[1][:3]) - self.coupler_gap - self.coupler_width),
                 *self.coupler_layer,
             ),
             gdstk.rectangle(
-                (r[0][0] + self.coupler_gap, sum(r[1][:2])),
-                (r[0][0] + self.coupler_gap + self.coupler_width, sum(r[1][:2]) + self.coupler_gap),
+                (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2])),
+                (sum(r[0][:2]) - self.coupler_gap - self.coupler_width, sum(r[1][:2]) + self.coupler_gap),
                 *self.coupler_layer,
             ),
         )
         if self.capacitor and self.inductor:
             lega = self.capacitor.dimensions[0]
             legb = self.capacitor.dimensions[1]
+            if self.coupler_via and self.coupler_via.landing_width > self.coupler_width:
+                legb -= self.coupler_via.landing_width - self.coupler_width
             lega *= coupler_tunable
             legb *= coupler_tunable
             c.add(
                 gdstk.rectangle(
-                    (sum(r[0][:2]), sum(r[1][:2]) + self.coupler_gap),
+                    (sum(r[0][:2]), sum(r[1][:3]) - self.coupler_gap),
                     (
                         sum(r[0][:2]) + lega,
-                        sum(r[1][:2]) + self.coupler_gap + self.coupler_width,
+                        sum(r[1][:3]) - self.coupler_gap - self.coupler_width,
                     ),
                     *self.coupler_layer,
                 ),
                 gdstk.rectangle(
-                    (r[0][0] + self.coupler_gap, sum(r[1][:2]) - legb),
-                    (r[0][0] + self.coupler_gap + self.coupler_width, sum(r[1][:2])),
+                    (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2]) - legb),
+                    (sum(r[0][:2]) - self.coupler_gap - self.coupler_width, sum(r[1][:2])),
                     *self.coupler_layer,
                 ),
             )
             if self.coupler_fill:
                 c.add(
                     gdstk.rectangle(
-                        (sum(r[0][:2]) + lega + self.coupler_gap, sum(r[1][:2]) + self.coupler_gap),
+                        (sum(r[0][:2]) + lega + self.coupler_gap, sum(r[1][:3])),
                         (
                             sum(r[0]) - self.box_width,
-                            sum(r[1][:2]) + 2 * self.coupler_gap + self.coupler_width,
+                            sum(r[1][:3]) - self.coupler_gap - self.coupler_width,
                         ),
                         *self.box_layer,
                     ),
                     gdstk.rectangle(
-                        (r[0][0], self.box_width),
+                        (sum(r[0][:2]) - self.coupler_gap, self.box_width),
                         (
-                            r[0][0] + self.coupler_gap + self.coupler_width,
+                            sum(r[0][:2]) - 2 * self.coupler_gap - self.coupler_width,
                             sum(r[1][:2]) - legb - self.coupler_gap,
                         ),
                         *self.box_layer,
                     ),
                 )
+                if self.coupler_via and self.coupler_via.landing_length > self.coupler_width:
+                    c.add(gdstk.rectangle((r[0][0], self.box_width), (sum(r[0][:2]) - self.coupler_width - self.coupler_gap * 2, sum(r[1][:2])), *self.box_layer))
 
             cap_pos = (sum(r[0][:2]), sum(r[1][:2]) - self.capacitor.dimensions[1])
+            if self.coupler_via and self.coupler_via.landing_width > self.coupler_width:
+                cap_pos = (cap_pos[0], cap_pos[1] + self.coupler_via.landing_width - self.coupler_width)
             ind_focus = self.inductor.focus_point
             ind_pos = (self.width / 2 - ind_focus[0], cap_pos[1] - self.inductor.dimensions[1])
 
