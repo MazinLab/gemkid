@@ -10,7 +10,7 @@ from ..beta2.layers import (
     BTA_VAR_SONNET_3D,
     TI_GOLD_SONNET_3D,
     AL_SONNET_3D,
-    VIA_SONNET_3D
+    VIA_SONNET_3D,
 )
 from ..beta2.layers import drawing_to_sonnet_3d
 
@@ -26,11 +26,18 @@ class B2VTestbench(simulate.LeftFeedlineTestbench):
 
     @property
     def _layer_stack(self) -> list[simulate.SonnetLayer]:
-        return [NB_SONNET_3D, BTA_SONNET_3D, BTA_VAR_SONNET_3D, TI_GOLD_SONNET_3D, AL_SONNET_3D, VIA_SONNET_3D]
+        return [
+            NB_SONNET_3D,
+            BTA_SONNET_3D,
+            BTA_VAR_SONNET_3D,
+            TI_GOLD_SONNET_3D,
+            AL_SONNET_3D,
+            VIA_SONNET_3D,
+        ]
 
     @property
     def _cell(self) -> gdstk.Cell:
-        c = drawing_to_sonnet(super()._cell)
+        c = drawing_to_sonnet_3d(super()._cell)
         if self.backside_gold:
             width = c.bounding_box()[1][0] - c.bounding_box()[0][0]
             height = c.bounding_box()[1][1] - c.bounding_box()[0][1]
@@ -41,7 +48,7 @@ class B2VTestbench(simulate.LeftFeedlineTestbench):
     def _dielectric_stack(self) -> list[simulate.DielectricLayer]:
         return [
             simulate.DielectricLayer("airtop", 100000.0, 0),
-            simulate.DielectricLayer("airbridge", 1.0, 1)
+            simulate.DielectricLayer("airbridge", 1.0, 1),
             simulate.DielectricLayer("cplanesaph", 750.0, 2, (9.3, 11.5)),
             simulate.DielectricLayer("airbot", 100000.0, 3),
         ]
@@ -52,12 +59,12 @@ class B2VTestbench(simulate.LeftFeedlineTestbench):
 
     @property
     def _portlevel(self):
-        return 0
+        return 1
 
 
 class B2VCMD(GeMKIDCMD):
     def _testbench_from_cell(self, cell, geometry, ns) -> simulate.TestbenchABC:
-        return B2VTestbench(cell, geometry.feedline)
+        return B2VTestbench(cell, geometry.feedline, 11.0)
 
 
 if __name__ == "__main__":
