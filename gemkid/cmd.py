@@ -192,6 +192,8 @@ class SimOptimize(SimGeomABC, SimSweepABC):
         if x0 is None:
             flt = self.df[self.df["f0"] < freq]
             resplt = flt[objective(flt["response_max"], flt["response_center"]) < target]
+            if len(resplt) == 0:
+                resplt = flt
             start = resplt.iloc[objective(resplt["response_max"], resplt["response_center"]).argmax()]
             x0 = np.array([start[tunes[0]], start[tunes[1]]])
         sol = sp.optimize.minimize(

@@ -294,6 +294,7 @@ class LeftFeedlineTestbench(TestbenchABC):
     feedline_config: geometry.FeedlineConfig
     padding: float = 0.5
     stub: float = 10
+    cell_heights: Optional[list[float]] = field(hash=False, default=None)
     filename: Optional[str] = None
 
     @property
@@ -322,6 +323,8 @@ class LeftFeedlineTestbench(TestbenchABC):
             if type(self.cell) is gdstk.Cell
             else sum([i.bounding_box()[1][1] - i.bounding_box()[0][1] for i in self.cell])
         )
+        if self.cell_heights:
+            ch = sum(self.cell_heights)
         return ch + self.stub * 2
 
     @property
@@ -350,7 +353,7 @@ class LeftFeedlineTestbench(TestbenchABC):
                     self.padding
                     + self.feedline_config.c * 1.5
                     + self.feedline_config.b * 2
-                    + self.feedline_config.a,
+                    + self.feedline_config.a * 2,
                     0,
                 ),
                 level=self._portlevel,
@@ -373,7 +376,7 @@ class LeftFeedlineTestbench(TestbenchABC):
                     self.padding
                     + self.feedline_config.c * 1.5
                     + self.feedline_config.b * 2
-                    + self.feedline_config.a,
+                    + self.feedline_config.a * 2,
                     self.__height(),
                 ),
                 level=self._portlevel,
@@ -382,7 +385,10 @@ class LeftFeedlineTestbench(TestbenchABC):
 
     @property
     def _width(self) -> float:
-        return super()._width + self.padding * 2
+        bb = self._cell.bounding_box()
+        if bb is None:
+            raise ValueError("Cell does not have a defined bounding box??? Please emit GDS and send to Aled")
+        return bb[1][1] + 2 * self.padding
 
     @property
     def _cell(self) -> gdstk.Cell:
@@ -405,7 +411,7 @@ class LeftFeedlineTestbench(TestbenchABC):
         if type(self.cell) is gdstk.Cell:
             c.add(gdstk.Reference(self.cell, (self.padding + self.feedline_config.width_half, y)))
         else:
-            for cell in self.cell:
+            for i, cell in enumerate(self.cell):
                 c.add(gdstk.Reference(cell, (self.padding + self.feedline_config.width_half, y)))
-                y += cell.bounding_box()[1][1] - cell.bounding_box()[0][1]
+                y += (cell.bounding_box()[1][1] - cell.bounding_box()[0][1]) if not self.cell_heights else self.cell_heights[i]
         return c.flatten()

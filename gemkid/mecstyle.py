@@ -361,7 +361,7 @@ class ViaWire:
                     (b[0] + self.landing_width / 2, b[1] - self.landing_length),
                 ),
             ]
-            bridge = ((a[0], a[1] - self.bridge_width / 2), (b[0], b[1] + self.bridge_width / 2))
+            bridge = ((a[0] - self.bridge_width / 2, a[1]), (b[0] + self.bridge_width / 2, b[1]))
 
         centers = [
             ((landings[0][1][0] + landings[0][0][0]) / 2, ((landings[0][1][1] + landings[0][0][1])) / 2),
@@ -425,8 +425,8 @@ class BoxConfig(GeomConfigMarker):
 
     def regions(self):
         if self.coupler_via:
-            cgl = self.coupler_gap * 2 + max(self.coupler_via.landing_length, self.coupler_width)
-            cgw = self.coupler_gap * 2 + max(self.coupler_via.landing_width, self.coupler_width)
+            cgl = self.coupler_gap + self.box_gap + max(self.coupler_via.landing_length, self.coupler_width)
+            cgw = self.coupler_gap + self.box_gap + max(self.coupler_via.landing_width, self.coupler_width)
         else:
             cgl = cgw = self.coupler_gap * 2 + self.coupler_width
         x = [self.feedline.width_half, cgl]
@@ -486,18 +486,23 @@ class BoxConfig(GeomConfigMarker):
                 *self.coupler_via.draw_polys(
                     (
                         self.feedline.a - self.coupler_via.landing_length,
-                        sum(r[1][:2]) + self.coupler_gap + max(self.coupler_via.landing_width, self.coupler_width) / 2,
+                        sum(r[1][:2])
+                        + self.coupler_gap
+                        + max(self.coupler_via.landing_width, self.coupler_width) / 2,
                     ),
                     (
                         sum(r[0][:2]) - self.coupler_gap,
-                        sum(r[1][:2]) + self.coupler_gap + max(self.coupler_via.landing_width, self.coupler_width) / 2,
+                        sum(r[1][:2])
+                        + self.coupler_gap
+                        + max(self.coupler_via.landing_width, self.coupler_width) / 2,
                     ),
                 )
             )
+        y_inset = self.box_gap if self.coupler_via else self.coupler_gap
         c.add(
             gdstk.rectangle(
-                (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:3]) - self.coupler_gap),
-                (sum(r[0][:2]), sum(r[1][:3]) - self.coupler_gap - self.coupler_width),
+                (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:3]) - y_inset),
+                (sum(r[0][:2]), sum(r[1][:3]) - y_inset - self.coupler_width),
                 *self.coupler_layer,
             ),
             gdstk.rectangle(
@@ -515,10 +520,10 @@ class BoxConfig(GeomConfigMarker):
             legb *= coupler_tunable
             c.add(
                 gdstk.rectangle(
-                    (sum(r[0][:2]), sum(r[1][:3]) - self.coupler_gap),
+                    (sum(r[0][:2]), sum(r[1][:3]) - y_inset),
                     (
                         sum(r[0][:2]) + lega,
-                        sum(r[1][:3]) - self.coupler_gap - self.coupler_width,
+                        sum(r[1][:3]) - y_inset - self.coupler_width,
                     ),
                     *self.coupler_layer,
                 ),
@@ -548,7 +553,13 @@ class BoxConfig(GeomConfigMarker):
                     ),
                 )
                 if self.coupler_via and self.coupler_via.landing_length > self.coupler_width:
-                    c.add(gdstk.rectangle((r[0][0], self.box_width), (sum(r[0][:2]) - self.coupler_width - self.coupler_gap * 2, sum(r[1][:2])), *self.box_layer))
+                    c.add(
+                        gdstk.rectangle(
+                            (r[0][0], self.box_width),
+                            (sum(r[0][:2]) - self.coupler_width - self.coupler_gap * 2, sum(r[1][:2])),
+                            *self.box_layer,
+                        )
+                    )
 
             cap_pos = (sum(r[0][:2]), sum(r[1][:2]) - self.capacitor.dimensions[1])
             if self.coupler_via and self.coupler_via.landing_width > self.coupler_width:
