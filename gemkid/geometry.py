@@ -36,8 +36,8 @@ class FeedlineConfig(GeomConfigMarker):
                 cellcache[cellname] = c
         cl = self.draw_half(height=height, ports=ports[0], cellcache=cellcache)
         cr = self.draw_half(height=height, ports=ports[1], cellcache=cellcache)
-        c.add(gdstk.Reference(cl, (self.width_half, height), rotation=np.pi))
-        c.add(gdstk.Reference(cr, (self.width_half, 0)))
+        c.add(gdstk.Reference(cl, (0, height), rotation=np.pi))
+        c.add(gdstk.Reference(cr, (0, 0)))
         return c.flatten()
 
     @property

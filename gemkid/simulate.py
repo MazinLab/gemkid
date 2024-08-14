@@ -388,7 +388,7 @@ class LeftFeedlineTestbench(TestbenchABC):
         bb = self._cell.bounding_box()
         if bb is None:
             raise ValueError("Cell does not have a defined bounding box??? Please emit GDS and send to Aled")
-        return bb[1][1] + 2 * self.padding
+        return bb[1][0] + 2 * self.padding
 
     @property
     def _cell(self) -> gdstk.Cell:
@@ -396,8 +396,8 @@ class LeftFeedlineTestbench(TestbenchABC):
         cache = {}
         stub = self.feedline_config.draw(self.stub, ([], []), cache)
         c.add(
-            gdstk.Reference(stub, (self.padding, 0.0)),
-            gdstk.Reference(stub, (self.padding, self.__height() - self.stub)),
+            gdstk.Reference(stub, (self.padding + self.feedline_config.width_half, 0.0)),
+            gdstk.Reference(stub, (self.padding + self.feedline_config.width_half, self.__height() - self.stub)),
         )
         leftline = self.feedline_config.draw_half(self.__height() - 2 * self.stub, [], cache)
         c.add(
