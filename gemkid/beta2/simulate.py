@@ -87,7 +87,7 @@ class B2CMD(GeMKIDCMD):
     def _testbench_from_cell(self, cell, geometry, ns) -> simulate.TestbenchABC:
         return B2Testbench([cell], geometry.feedline, stub=18, threedee=ns.threedee, cell_heights=[150.0])
 
-    generation = 1
+    generation = 2
 
 
 if __name__ == "__main__":

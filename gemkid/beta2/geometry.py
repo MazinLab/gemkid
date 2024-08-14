@@ -17,7 +17,7 @@ FB = 2.0
 class FeedlineConfig(geometry.FeedlineConfig):
     a: float = 3.5
     b: float = FB
-    c: float = 11.5 - FB
+    c: float = 13.5 - FB
     feed_layer: tuple[int, int] | DrawingLayer = NB
     ground_layer: tuple[int, int] | DrawingLayer = NB
 
@@ -43,7 +43,7 @@ class CapacitorConfig(mecstyle.CapacitorConfig):
     leg_width: float = 1.5
     leg_landing: float = 0.0
     leg_layer: DrawingLayer = BTA
-    wiring_width: float = 12.0
+    wiring_width: float = 11.0
     wiring_layer: DrawingLayer = BTA
     extra_height: float = 0.0
 
@@ -63,7 +63,7 @@ class BoxConfig(mecstyle.BoxConfig):
     box_layer: DrawingLayer = NB
     width: float = 150
     height: float = 150
-    crossover_via: mecstyle.ViaWire = mecstyle.ViaWire(11.5 - FB, AL, True, 11.5 - FB, 11, NB, 6, 8, VIA)
+    crossover_via: mecstyle.ViaWire = mecstyle.ViaWire(8 - 3, AL, True, 9, 11, NB, 6, 8, VIA)
 
     def draw(
         self,
@@ -78,7 +78,7 @@ class BoxConfig(mecstyle.BoxConfig):
         box = drawres if flatten else drawres[0]
         assert type(box) is gdstk.Cell
         r = self.regions()
-        x = self.feedline.a + self.feedline.b + self.feedline.c / 2
+        x = self.feedline.a + self.feedline.b + self.crossover_via.landing_width / 2
         ya = sum(r[1][:2]) - self.crossover_via.landing_length
         yb = sum(r[1][:3]) + self.crossover_via.landing_length
         box.add(*self.crossover_via.draw_polys((x, ya), (x, yb)))
@@ -87,11 +87,11 @@ class BoxConfig(mecstyle.BoxConfig):
                 self.crossover_via.bridge_width,
                 AL,
                 True,
-                self.crossover_via.landing_length,
                 self.crossover_via.landing_width,
+                self.crossover_via.landing_length,
                 NB,
-                self.crossover_via.via_length,
                 self.crossover_via.via_width,
+                self.crossover_via.via_length,
                 VIA,
             )
             y = ya + flvia.landing_width / 2

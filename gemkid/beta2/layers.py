@@ -16,7 +16,7 @@ TI_GOLD_SONNET = SonnetMetalLayer((99, 0), "tiau", 1, SonnetPlanarGeneral(0.1, 0
 NB_SONNET_3D = SonnetMetalLayer((0, 0), "nb", 1, SonnetPlanarGeneral(1e-7, 0, 0, 0.3), 105.0)
 BTA_SONNET_3D = SonnetMetalLayer((1, 0), "bta", 1, SonnetPlanarGeneral(1e-7, 0, 0, 95.0), 220.0)
 BTA_VAR_SONNET_3D = SonnetMetalLayer((1, 1), "bta-var", 1, SonnetPlanarGeneral(1e-7, 0, 0, 195.0), 220.0)
-AL_SONNET_3D = SonnetMetalLayer((2, 0), "al", 0, SonnetPlanarGeneral(1e-7, 0, 0, 0.1), 700.0)
+AL_SONNET_3D = SonnetMetalLayer((2, 0), "al", 0, SonnetPlanarGeneral(1e-7, 0, 0, 0.043), 700.0)
 VIA_SONNET_3D = SonnetViaLayer((3, 0), "altonb", 0, None, 1)
 TI_GOLD_SONNET_3D = SonnetMetalLayer((99, 0), "tiau", 2, SonnetPlanarGeneral(0.1, 0, 0, 0), 100.0)
 

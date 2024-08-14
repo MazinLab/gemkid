@@ -1,5 +1,6 @@
 import argparse
 import abc
+from ctypes import ArgumentError
 import os
 import typing
 import logging
@@ -149,7 +150,22 @@ class SimOptimize(SimGeomABC, SimSweepABC):
             required=True,
             help="Change in inductance for which we are optimizing our response in pH",
         )
-        subparser.add_argument("--target", type=float, required=True, help="Target phase response in degrees")
+        subparser.add_argument(
+            "--metric",
+            type=str,
+            required=False,
+            choices=["meanphase", "maxphase", "centralphase", "qc"],
+            default="centralphase",
+        )
+        subparser.add_argument(
+            "--target",
+            type=float,
+            required=True,
+            help="Target phase response in degrees or target qc in thousands",
+        )
+        subparser.add_argument("--fstart", type=float, default=4.05)
+        subparser.add_argument("--fstop", type=float, default=8.5)
+        subparser.add_argument("--fcount", type=int, default=256)
         subparser.add_argument("--quiet", nargs="?", default=False, const=True)
 
     def run(self, ns, command: "GeMKIDCMD"):
@@ -165,14 +181,12 @@ class SimOptimize(SimGeomABC, SimSweepABC):
             logging.getLogger("pysonnet").setLevel(logging.WARNING)
 
         prod = itertools.product([0.0, 1.0], repeat=len(command.tunables))
-        geom = command.construct_geometry(ns)
-        fits = []
         for tunes in prod:
             tdict = {t: v for t, v in zip(command.tunables, tunes)}
             self.get_result(tdict, ns.deltal)
             self.save_database(ns.database)
 
-        freqs = np.linspace(4.05, 8.5, 256)
+        freqs = np.linspace(self.ns.fstart, self.ns.fstop, self.ns.fcount, endpoint=True)
         for freq in tqdm.tqdm(freqs):
             self.optimize_freq(freq, self.ns.deltal, self.ns.target)
             self.save_database(ns.database)
@@ -182,22 +196,36 @@ class SimOptimize(SimGeomABC, SimSweepABC):
             return
 
         tunes = list(self.grid.keys())[:2]
-        objective = lambda x, y: (x + y) / 2
+        if self.ns.metric == "meanphase":
+            objective = lambda rm, rc, qc: (rm + rc) / 2
+        elif self.ns.metric == "maxphase":
+            objective = lambda rm, rc, qc: rm
+        elif self.ns.metric == "centralphase":
+            objective = lambda rm, rc, qc: rc
+        elif self.ns.metric == "qc":
+            objective = lambda rm, rc, qc: qc / 1000
+        else:
+            raise ArgumentError("Metric {:s} not supported".format(self.ns.metric))
         manifold = sp.interpolate.CloughTocher2DInterpolator(
             np.array([self.df[tunes[0]], self.df[tunes[1]]]).T,
-            np.array([self.df["f0"], self.df["response_max"], self.df["response_center"]]).T,
+            np.array([self.df["f0"], self.df["response_max"], self.df["response_center"], self.df["qc"]]).T,
             fill_value=0,
         )
 
         if x0 is None:
-            flt = self.df[self.df["f0"] < freq]
-            resplt = flt[objective(flt["response_max"], flt["response_center"]) < target]
+            flt = self.df[(self.df["f0"] < freq) & (self.df["generation"] == self.generation)]
+            resplt = flt[objective(flt["response_max"], flt["response_center"], flt["qc"]) < target]
             if len(resplt) == 0:
                 resplt = flt
-            start = resplt.iloc[objective(resplt["response_max"], resplt["response_center"]).argmax()]
+            start = resplt.iloc[
+                objective(resplt["response_max"], resplt["response_center"], resplt["qc"]).argmax()
+            ]
             x0 = np.array([start[tunes[0]], start[tunes[1]]])
         sol = sp.optimize.minimize(
-            lambda x: np.abs(target - objective(manifold(x[0], x[1])[1], manifold(x[0], x[1])[2])) ** 2
+            lambda x: np.abs(
+                target - objective(manifold(x[0], x[1])[1], manifold(x[0], x[1])[2], manifold(x[0], x[1])[3])
+            )
+            ** 2
             + np.abs(freq - manifold(x[0], x[1])[0]) ** 2,
             x0,
             bounds=[(0, 1), (0, 1)],
@@ -228,11 +256,13 @@ class SimOptimize(SimGeomABC, SimSweepABC):
         ]:
             fully_cached = fully_cached and self.have_cached(tunes, deltal)
             if not self.have_cached(tunes, deltal):
-                f0, rm, rc = self.get_result(tunes, deltal)
+                f0, rm, rc, qc = self.get_result(tunes, deltal)
                 log.info(
                     "Guess "
                     + repr(tunes)
-                    + " f0: {:.3f}, resp max: {:.1f} deg, resp center: {:.1f} deg".format(f0, rm, rc)
+                    + " f0: {:.3f}, qc: {:.1f}, resp max: {:.1f} deg, resp center: {:.1f} deg, resp mean: {:.1f} deg".format(
+                        f0, qc, rm, rc, 0.5 * rm + 0.5 * rc
+                    )
                 )
         if fully_cached:
             log.info("FOUND SOLUTION WITH {:d} ITERATIONS REMAINING FOR f0={:.3f}".format(maxiter, freq))
@@ -290,6 +320,7 @@ class SimOptimize(SimGeomABC, SimSweepABC):
                     res[res["deltal"] == deltal].iloc[0]["f0"],
                     res[res["deltal"] == deltal].iloc[0]["response_max"],
                     res[res["deltal"] == deltal].iloc[0]["response_center"],
+                    res[res["deltal"] == deltal].iloc[0]["qc"],
                 )
             else:
                 r = res.iloc[0]
@@ -319,7 +350,7 @@ class SimOptimize(SimGeomABC, SimSweepABC):
             output[k] = v
         row = pd.DataFrame(output, index=range(1))
         self.df = pd.concat([df, row], ignore_index=True, axis=0)
-        return output["f0"], output["response_max"], output["response_center"]
+        return output["f0"], output["response_max"], output["response_center"], output["qc"]
 
     def get_sim(self, tunables, variational: bool = False):
         RETRIES = 5
