@@ -2,13 +2,13 @@ import abc
 from io import UnsupportedOperation
 
 from typing import Optional, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True, eq=True)
 class DrawingLayer:
     gds_layer: tuple[int, int]
-    name: str
+    name: str = field(hash=False)
 
     def __iter__(self):
         return iter(self.gds_layer)

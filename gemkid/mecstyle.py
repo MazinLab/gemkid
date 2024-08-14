@@ -15,10 +15,10 @@ class InductorConfig(GeomConfigMarker):
     leg_length: float
     leg_width: float
     leg_landing: float
-    leg_layer: tuple[int, int] | DrawingLayer = (0, 0)
-    wiring_width: float = 2
-    wiring_gap: float = 0.5
-    wiring_layer: tuple[int, int] | DrawingLayer = (0, 0)
+    leg_layer: tuple[int, int] | DrawingLayer
+    wiring_width: float
+    wiring_gap: float
+    wiring_layer: tuple[int, int] | DrawingLayer
 
     def regions(self):
         topcap = self.wiring_width + self.wiring_gap * 2
@@ -39,16 +39,27 @@ class InductorConfig(GeomConfigMarker):
         regions = self.regions()
         return regions[0][0] + regions[0][1] / 2, regions[1][0] + regions[1][1] / 2
 
-    def draw(self, port_offset=0.0, cellcache={}):
+    @property
+    def varsq(self):
         regions = self.regions()
-        h = hex(abs(hash(self) + hash(port_offset)))
-        cellname = "UE1Inductor-{:s}".format(h)
+        sq_start = (
+            self.leg_length // (self.leg_width * 2) + regions[0][0],
+            sum(regions[1][:2]) - self.leg_width,
+        )
+        sq_end = sq_start[0] + self.leg_width, sq_start[1] + self.leg_width
+        return sq_start, sq_end
+
+    def draw(self, port_offset=0.0, variation_layer=None, cellcache={}):
+        regions = self.regions()
+        h = hex(abs(hash((hash(self), hash(port_offset), hash(variation_layer)))))
+        cellname = "Inductor-{:s}".format(h)
         c = gdstk.Cell(cellname)
         if cellcache is not None:
             if cellname in cellcache.keys():
                 return cellcache[cellname]
             else:
                 cellcache[cellname] = c
+
         legs = [
             gdstk.rectangle(
                 (regions[0][0] - self.leg_landing, regions[1][0] + i * (self.leg_width + self.leg_gap)),
@@ -60,7 +71,13 @@ class InductorConfig(GeomConfigMarker):
             )
             for i in range(self.legs)
         ]
+        if variation_layer:
+            legs = gdstk.boolean(
+                legs, gdstk.rectangle(*self.varsq, *variation_layer), "not", 0.0001, *self.leg_layer
+            )
+            legs.append(gdstk.rectangle(*self.varsq, *variation_layer))
         c.add(*legs)
+
         leftwiring = [
             gdstk.rectangle(
                 (
@@ -174,12 +191,17 @@ class CapacitorConfig(GeomConfigMarker):
     leg_layer: tuple[int, int] | DrawingLayer
     wiring_width: float
     wiring_layer: tuple[int, int] | DrawingLayer
+    extra_height: Optional[float]
 
     @property
     def dimensions(self):
         return (
             self.wiring_width * 2 + max(self.leg_length) + self.leg_gap,
-            (self.leg_width + self.leg_gap) * (self.legs + 1) + self.wiring_width,
+            (
+                (self.leg_width + self.leg_gap) * (self.legs + 1)
+                + self.wiring_width
+                + (self.extra_height if self.extra_height else 0.0)
+            ),
         )
 
     def caprange(self):
@@ -192,8 +214,8 @@ class CapacitorConfig(GeomConfigMarker):
 
         dim = self.dimensions
 
-        h = hex(abs(hash(self) + hash(port) + hash(tunable)))
-        cellname = "UE1Capacitor-{:s}".format(h)
+        h = hex(abs(hash((hash(self), hash(port), hash(tunable)))))
+        cellname = "Capacitor-{:s}".format(h)
         c = gdstk.Cell(cellname)
         if cellcache is not None:
             if cellname in cellcache.keys():
@@ -210,10 +232,19 @@ class CapacitorConfig(GeomConfigMarker):
                     ),
                     gdstk.rectangle(
                         (self.wiring_width, 0),
-                        (dim[0] - self.wiring_width, self.wiring_width),
+                        (
+                            dim[0] - self.wiring_width,
+                            self.wiring_width + (self.extra_height if self.extra_height else 0.0),
+                        ),
                     ),
                 ],
-                gdstk.rectangle((port[0], 0), (port[0] + port[1], self.wiring_width)),
+                gdstk.rectangle(
+                    (port[0], 0),
+                    (
+                        port[0] + port[1],
+                        self.wiring_width + (self.extra_height if self.extra_height else 0.0),
+                    ),
+                ),
                 "not",
                 0.0001,
                 *self.wiring_layer,
@@ -247,20 +278,41 @@ class CapacitorConfig(GeomConfigMarker):
                 gdstk.rectangle(
                     (
                         self.wiring_width - self.leg_landing,
-                        self.wiring_width + self.leg_gap + i * (self.leg_gap + self.leg_width),
+                        (
+                            self.wiring_width
+                            + self.leg_gap
+                            + i * (self.leg_gap + self.leg_width)
+                            + (self.extra_height if self.extra_height else 0.0)
+                        ),
                     ),
-                    (self.wiring_width + le, self.wiring_width + (i + 1) * (self.leg_gap + self.leg_width)),
+                    (
+                        self.wiring_width + le,
+                        (
+                            self.wiring_width
+                            + (i + 1) * (self.leg_gap + self.leg_width)
+                            + (self.extra_height if self.extra_height else 0.0)
+                        ),
+                    ),
                     *self.leg_layer,
                 )
                 if (i + o) % 2 == 0
                 else gdstk.rectangle(
                     (
                         self.wiring_width + max(self.leg_length) + self.leg_gap - le,
-                        self.wiring_width + self.leg_gap + i * (self.leg_gap + self.leg_width),
+                        (
+                            self.wiring_width
+                            + self.leg_gap
+                            + i * (self.leg_gap + self.leg_width)
+                            + (self.extra_height if self.extra_height else 0.0)
+                        ),
                     ),
                     (
                         self.wiring_width + max(self.leg_length) + self.leg_gap + self.leg_landing,
-                        self.wiring_width + (i + 1) * (self.leg_gap + self.leg_width),
+                        (
+                            self.wiring_width
+                            + (i + 1) * (self.leg_gap + self.leg_width)
+                            + (self.extra_height if self.extra_height else 0.0)
+                        ),
                     ),
                     *self.leg_layer,
                 )
@@ -270,6 +322,81 @@ class CapacitorConfig(GeomConfigMarker):
         c.add(*legs)
         return c
 
+
+@dataclass(eq=True, frozen=True)
+class ViaWire:
+    bridge_width: float
+    bridge_layer: tuple[int, int] | DrawingLayer
+    bridge_land: bool
+    landing_width: float
+    landing_length: float
+    landing_layer: tuple[int, int] | DrawingLayer
+    via_width: float
+    via_length: float
+    via_layer: tuple[int, int] | DrawingLayer
+
+    def draw_polys(self, a: tuple[float, float], b: tuple[float, float]):
+        if a[0] != b[0] and a[1] != b[1]:
+            raise ValueError("Via must be horizontal or vertical")
+        if a[1] == b[1]:
+            landings = [
+                (
+                    (a[0], a[1] - self.landing_width / 2),
+                    (a[0] + self.landing_length, a[1] + self.landing_width / 2),
+                ),
+                (
+                    (b[0] - self.landing_length, b[1] - self.landing_width / 2),
+                    (b[0], b[1] + self.landing_width / 2),
+                ),
+            ]
+            bridge = ((a[0], a[1] - self.bridge_width / 2), (b[0], b[1] + self.bridge_width / 2))
+        else:
+            landings = [
+                (
+                    (a[0] - self.landing_width / 2, a[1]),
+                    (a[0] + self.landing_width / 2, a[1] + self.landing_length),
+                ),
+                (
+                    (b[0] - self.landing_width / 2, b[1]),
+                    (b[0] + self.landing_width / 2, b[1] - self.landing_length),
+                ),
+            ]
+            bridge = ((a[0] - self.bridge_width / 2, a[1]), (b[0] + self.bridge_width / 2, b[1]))
+
+        centers = [
+            ((landings[0][1][0] + landings[0][0][0]) / 2, ((landings[0][1][1] + landings[0][0][1])) / 2),
+            ((landings[1][1][0] + landings[1][0][0]) / 2, ((landings[1][1][1] + landings[1][0][1])) / 2),
+        ]
+        vx, vy = (self.via_length, self.via_width) if a[1] == b[1] else (self.via_width, self.via_length)
+        vias = [
+            (
+                (centers[0][0] - vx / 2, centers[0][1] - vy / 2),
+                (centers[0][0] + vx / 2, centers[0][1] + vy / 2),
+            ),
+            (
+                (centers[1][0] - vx / 2, centers[1][1] - vy / 2),
+                (centers[1][0] + vx / 2, centers[1][1] + vy / 2),
+            ),
+        ]
+
+        polys = [
+            gdstk.rectangle(*landings[0], *self.landing_layer),
+            gdstk.rectangle(*landings[1], *self.landing_layer),
+            gdstk.rectangle(*vias[0], *self.via_layer),
+            gdstk.rectangle(*vias[1], *self.via_layer),
+            gdstk.rectangle(*bridge, *self.bridge_layer),
+        ]
+
+        if self.bridge_land:
+            polys.extend(
+                [
+                    gdstk.rectangle(*landings[0], *self.bridge_layer),
+                    gdstk.rectangle(*landings[1], *self.bridge_layer),
+                ]
+            )
+        return polys
+
+
 @dataclass(eq=True, frozen=True)
 class BoxConfig(GeomConfigMarker):
     inductor: Optional[InductorConfig]
@@ -277,7 +404,9 @@ class BoxConfig(GeomConfigMarker):
     feedline: FeedlineConfig
     coupler_width: float
     coupler_gap: float
+    coupler_fill: bool
     coupler_layer: tuple[int, int] | DrawingLayer
+    coupler_via: Optional[ViaWire]
     box_width: float
     box_gap: float
     box_layer: tuple[int, int] | DrawingLayer
@@ -295,26 +424,38 @@ class BoxConfig(GeomConfigMarker):
         return self.width, self.height
 
     def regions(self):
-        x = [self.feedline.width_half, self.coupler_gap * 2 + self.coupler_width]
-        x.append(sum(x) - self.box_width - self.box_gap)
+        if self.coupler_via:
+            cgl = self.coupler_gap + self.box_gap + max(self.coupler_via.landing_length, self.coupler_width)
+            cgw = self.coupler_gap + self.box_gap + max(self.coupler_via.landing_width, self.coupler_width)
+        else:
+            cgl = cgw = self.coupler_gap * 2 + self.coupler_width
+        x = [self.feedline.width_half, cgl]
+        x.append(self.width - sum(x) - self.box_width - self.box_gap)
         x.append(self.box_width + self.box_gap)
         y = [
             self.box_width + self.box_gap,
-            self.height - 2 * self.box_width - self.box_gap - 2 * self.coupler_gap - self.coupler_width,
-            2 * self.coupler_gap + self.coupler_width,
+            self.height - 2 * self.box_width - self.box_gap - cgw,
+            cgw,
             self.box_width,
         ]
         return x, y
 
-    def draw(self, coupler_tunable: float = 1.0, capacitor_tunable: float = 1.0, flatten=True, cellcache={}):
+    def draw(
+        self,
+        coupler_tunable: float = 1.0,
+        capacitor_tunable: float = 1.0,
+        variation_layer=None,
+        flatten=True,
+        cellcache={},
+    ):
         assert ((self.inductor is not None) and (self.capacitor is not None)) or (
             self.inductor is None and self.capacitor is None
         )
         r = self.regions()
-        h = hex(abs(hash((self, coupler_tunable, capacitor_tunable))))
+        h = hex(abs(hash((self, coupler_tunable, capacitor_tunable, variation_layer))))
         subcells = []
 
-        cellname = ("UE1BoxFlat-{:s}" if flatten else "UE1Box-{:s}").format(h)
+        cellname = ("BoxFlat-{:s}" if flatten else "UE1Box-{:s}").format(h)
         c = gdstk.Cell(cellname)
         if cellcache is not None:
             if cellname in cellcache.keys():
@@ -322,46 +463,107 @@ class BoxConfig(GeomConfigMarker):
             else:
                 cellcache[cellname] = c
 
-        f = self.feedline.draw_half(self.height, ports=[(sum(r[1][:2]), r[1][2])], cellcache=cellcache)
+        f = self.feedline.draw_half(
+            self.height,
+            ports=[(sum(r[1][:2]), r[1][2])] if self.coupler_via is None else [],
+            cellcache=cellcache,
+        )
         c.add(gdstk.Reference(f, (0, 0)))
         subcells.append(f)
+        if self.coupler_via is None:
+            c.add(
+                gdstk.rectangle(
+                    (self.feedline.a, sum(r[1][:2]) + self.coupler_gap),
+                    (
+                        sum(r[0][:2]) - self.coupler_gap,
+                        sum(r[1][:2]) + self.coupler_gap + self.coupler_width,
+                    ),
+                    *self.coupler_layer,
+                ),
+            )
+        else:
+            c.add(
+                *self.coupler_via.draw_polys(
+                    (
+                        self.feedline.a - self.coupler_via.landing_length,
+                        sum(r[1][:2])
+                        + self.coupler_gap
+                        + max(self.coupler_via.landing_width, self.coupler_width) / 2,
+                    ),
+                    (
+                        sum(r[0][:2]) - self.coupler_gap,
+                        sum(r[1][:2])
+                        + self.coupler_gap
+                        + max(self.coupler_via.landing_width, self.coupler_width) / 2,
+                    ),
+                )
+            )
+        y_inset = self.box_gap if self.coupler_via else self.coupler_gap
         c.add(
             gdstk.rectangle(
-                (self.feedline.a, sum(r[1][:2]) + self.coupler_gap),
-                (
-                    sum(r[0][:2]),
-                    sum(r[1][:2]) + self.coupler_gap + self.coupler_width,
-                ),
+                (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:3]) - y_inset),
+                (sum(r[0][:2]), sum(r[1][:3]) - y_inset - self.coupler_width),
                 *self.coupler_layer,
             ),
             gdstk.rectangle(
-                (r[0][0] + self.coupler_gap, sum(r[1][:2])),
-                (r[0][0] + self.coupler_gap + self.coupler_width, sum(r[1][:2]) + self.coupler_gap),
+                (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2])),
+                (sum(r[0][:2]) - self.coupler_gap - self.coupler_width, sum(r[1][:2]) + self.coupler_gap),
                 *self.coupler_layer,
             ),
         )
         if self.capacitor and self.inductor:
             lega = self.capacitor.dimensions[0]
             legb = self.capacitor.dimensions[1]
+            if self.coupler_via and self.coupler_via.landing_width > self.coupler_width:
+                legb -= self.coupler_via.landing_width - self.coupler_width
             lega *= coupler_tunable
             legb *= coupler_tunable
             c.add(
                 gdstk.rectangle(
-                    (sum(r[0][:2]), sum(r[1][:2]) + self.coupler_gap),
+                    (sum(r[0][:2]), sum(r[1][:3]) - y_inset),
                     (
                         sum(r[0][:2]) + lega,
-                        sum(r[1][:2]) + self.coupler_gap + self.coupler_width,
+                        sum(r[1][:3]) - y_inset - self.coupler_width,
                     ),
                     *self.coupler_layer,
                 ),
                 gdstk.rectangle(
-                    (r[0][0] + self.coupler_gap, sum(r[1][:2]) - legb),
-                    (r[0][0] + self.coupler_gap + self.coupler_width, sum(r[1][:2])),
+                    (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2]) - legb),
+                    (sum(r[0][:2]) - self.coupler_gap - self.coupler_width, sum(r[1][:2])),
                     *self.coupler_layer,
                 ),
             )
+            if self.coupler_fill:
+                c.add(
+                    gdstk.rectangle(
+                        (sum(r[0][:2]) + lega + self.coupler_gap, sum(r[1][:3])),
+                        (
+                            sum(r[0]) - self.box_width,
+                            sum(r[1][:3]) - self.coupler_gap - self.coupler_width,
+                        ),
+                        *self.box_layer,
+                    ),
+                    gdstk.rectangle(
+                        (sum(r[0][:2]) - self.coupler_gap, self.box_width),
+                        (
+                            sum(r[0][:2]) - 2 * self.coupler_gap - self.coupler_width,
+                            sum(r[1][:2]) - legb - self.coupler_gap,
+                        ),
+                        *self.box_layer,
+                    ),
+                )
+                if self.coupler_via and self.coupler_via.landing_length > self.coupler_width:
+                    c.add(
+                        gdstk.rectangle(
+                            (r[0][0], self.box_width),
+                            (sum(r[0][:2]) - self.coupler_width - self.coupler_gap * 2, sum(r[1][:2])),
+                            *self.box_layer,
+                        )
+                    )
 
             cap_pos = (sum(r[0][:2]), sum(r[1][:2]) - self.capacitor.dimensions[1])
+            if self.coupler_via and self.coupler_via.landing_width > self.coupler_width:
+                cap_pos = (cap_pos[0], cap_pos[1] + self.coupler_via.landing_width - self.coupler_width)
             ind_focus = self.inductor.focus_point
             ind_pos = (self.width / 2 - ind_focus[0], cap_pos[1] - self.inductor.dimensions[1])
 
@@ -369,7 +571,7 @@ class BoxConfig(GeomConfigMarker):
                 0, (cap_pos[0] + self.capacitor.wiring_width - self.inductor.wiring_width) - ind_pos[0]
             )
 
-            ind = self.inductor.draw(port_offset, cellcache=cellcache)
+            ind = self.inductor.draw(port_offset, variation_layer=variation_layer, cellcache=cellcache)
             cap = self.capacitor.draw(
                 capacitor_tunable,
                 (
