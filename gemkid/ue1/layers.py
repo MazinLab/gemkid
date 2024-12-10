@@ -5,7 +5,6 @@ from ..simulate import SonnetMetalLayer, SonnetViaLayer, SonnetPlanarGeneral
 ATA_NB = layers.DrawingLayer((0, 0), "aTa_Nb")
 HF = layers.DrawingLayer((1, 0), "Hf_Bridge")
 HF_CONTACT = layers.DrawingLayer((2, 0), "Hf_Contact")
-CONTACT_CUT = layers.DrawingLayer((3, 0), "Contact_Cut")
 
 ATA_NB_SONNET = SonnetMetalLayer((0, 0), "atanb", 0, SonnetPlanarGeneral(1e-7, 0, 0, 0.2878), 105.0)
 HF_SONNET = SonnetMetalLayer((1, 0), "hf", 0, SonnetPlanarGeneral(1e-7, 0, 0, 4.0), 200.0)

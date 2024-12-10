@@ -219,6 +219,21 @@ class InductorDoubledConfig(GeomConfigMarker):
     wiring_gap: float
     wiring_layer: tuple[int, int] | DrawingLayer
 
+    @property
+    def port(self):
+        return self.wiring_width, self.wiring_width
+
+
+    @property
+    def focus_point(self):
+        return self.dimensions[0] / 2, (self.wiring_width - self.leg_width) / 2 + self.legs * self.leg_width + (self.legs - 0.5) * self.leg_gap
+
+    @property
+    def dimensions(self):
+        d = self.wiring_width*4 + self.wiring_gap * 2 + self.leg_length, self.legs * 2 * (self.leg_width + self.leg_gap) - self.leg_gap + (self.leg_gap + self.wiring_gap) / 2
+        print(d)
+        return d
+
     def draw(self, port_offset=0.0, variation_layer=None, cellcache={}):
         h = hex(abs(hash((hash(self), hash(port_offset), hash(variation_layer)))))
         cellname = "InductorDoubled-{:s}".format(h)
@@ -429,7 +444,8 @@ class InductorDoubledConfig(GeomConfigMarker):
                 ),
             ]
         )
-        c.add(*legs, *connections)
+        mirrorline = (0, self.dimensions[1] / 2), (self.dimensions[0], self.dimensions[1] / 2)
+        c.add(*[l.mirror(*mirrorline) for l in legs], *[c.mirror(*mirrorline) for c in connections])
         return c
 
 
