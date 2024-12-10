@@ -51,7 +51,7 @@ class InductorConfig(mecstyle.InductorDoubledConfig):
 
 @dataclass(eq=True, frozen=True)
 class CapacitorConfig(mecstyle.CapacitorConfig):
-    legs: int = 76
+    legs: int = 32
     leg_gap: float = 0.75
     leg_length: tuple[float, float] = (122 + 222 - 150, 150)
     leg_width: float = 0.75

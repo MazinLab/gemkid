@@ -20,7 +20,7 @@ from .layers import drawing_to_sonnet, drawing_to_sonnet_3d
 
 @dataclass(frozen=True, eq=True)
 class UE1Testbench(simulate.LeftFeedlineTestbench):
-    delta: float = 0.5
+    delta: float = 0.25
     backside_gold: bool = False
 
     @property
