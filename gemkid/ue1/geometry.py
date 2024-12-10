@@ -13,7 +13,7 @@ from .. import mecstyle
 
 @dataclass(eq=True, frozen=True)
 class InductorConfig(mecstyle.InductorConfig):
-    legs: int = 15
+    legs: int = 16
     leg_gap: float = 0.5
     leg_length: float = 30.0
     leg_width: float = 2.0

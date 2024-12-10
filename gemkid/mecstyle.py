@@ -62,10 +62,15 @@ class InductorConfig(GeomConfigMarker):
 
         legs = [
             gdstk.rectangle(
-                (regions[0][0] - self.leg_landing, regions[1][0] + i * (self.leg_width + self.leg_gap)),
+                (
+                    regions[0][0] - self.leg_landing,
+                    regions[1][0] + i * (self.leg_width + self.leg_gap),
+                ),
                 (
                     regions[0][0] + self.leg_length + self.leg_landing,
-                    regions[1][0] + i * (self.leg_width + self.leg_gap) + self.leg_width,
+                    regions[1][0]
+                    + i * (self.leg_width + self.leg_gap)
+                    + self.leg_width,
                 ),
                 *self.leg_layer,
             )
@@ -73,7 +78,11 @@ class InductorConfig(GeomConfigMarker):
         ]
         if variation_layer:
             legs = gdstk.boolean(
-                legs, gdstk.rectangle(*self.varsq, *variation_layer), "not", 0.0001, *self.leg_layer
+                legs,
+                gdstk.rectangle(*self.varsq, *variation_layer),
+                "not",
+                0.0001,
+                *self.leg_layer,
             )
             legs.append(gdstk.rectangle(*self.varsq, *variation_layer))
         c.add(*legs)
@@ -126,7 +135,10 @@ class InductorConfig(GeomConfigMarker):
                 *self.wiring_layer,
             ),
             gdstk.rectangle(
-                (self.wiring_width, sum(regions[1]) - self.wiring_gap - self.wiring_width),
+                (
+                    self.wiring_width,
+                    sum(regions[1]) - self.wiring_gap - self.wiring_width,
+                ),
                 (self.wiring_width + port_offset, sum(regions[1]) - self.wiring_gap),
                 *self.wiring_layer,
             ),
@@ -136,8 +148,14 @@ class InductorConfig(GeomConfigMarker):
                 *self.wiring_layer,
             ),
             gdstk.rectangle(
-                (regions[0][0] + self.wiring_gap + port_offset, sum(regions[1][:2]) + self.wiring_gap),
-                (regions[0][0] + self.wiring_gap + self.wiring_width + port_offset, sum(regions[1])),
+                (
+                    regions[0][0] + self.wiring_gap + port_offset,
+                    sum(regions[1][:2]) + self.wiring_gap,
+                ),
+                (
+                    regions[0][0] + self.wiring_gap + self.wiring_width + port_offset,
+                    sum(regions[1]),
+                ),
                 *self.wiring_layer,
             ),
             gdstk.rectangle(
@@ -150,18 +168,26 @@ class InductorConfig(GeomConfigMarker):
             ),
             gdstk.rectangle(
                 (sum(regions[0][:2]) + self.wiring_width + self.wiring_gap, 0),
-                (sum(regions[0]), sum(regions[1]) - self.wiring_width - self.wiring_gap),
+                (
+                    sum(regions[0]),
+                    sum(regions[1]) - self.wiring_width - self.wiring_gap,
+                ),
                 *self.wiring_layer,
             ),
         )
         if self.legs % 2 == 0:
             c.add(
                 gdstk.rectangle(
-                    (0, 0), (sum(regions[0]) - self.wiring_width, self.wiring_width), *self.wiring_layer
+                    (0, 0),
+                    (sum(regions[0]) - self.wiring_width, self.wiring_width),
+                    *self.wiring_layer,
                 ),
                 gdstk.rectangle(
                     (0, self.wiring_width),
-                    (self.wiring_width, self.leg_width + self.wiring_gap + self.wiring_width),
+                    (
+                        self.wiring_width,
+                        self.leg_width + self.wiring_gap + self.wiring_width,
+                    ),
                     *self.wiring_layer,
                 ),
             )
@@ -179,6 +205,232 @@ class InductorConfig(GeomConfigMarker):
     def port(self):
         regions = self.regions()
         return regions[0][0], self.wiring_width
+
+
+@dataclass(eq=True, frozen=True)
+class InductorDoubledConfig(GeomConfigMarker):
+    legs: int
+    leg_gap: float
+    leg_length: float
+    leg_width: float
+    leg_landing: float
+    leg_layer: tuple[int, int] | DrawingLayer
+    wiring_width: float
+    wiring_gap: float
+    wiring_layer: tuple[int, int] | DrawingLayer
+
+    def draw(self, port_offset=0.0, variation_layer=None, cellcache={}):
+        h = hex(abs(hash((hash(self), hash(port_offset), hash(variation_layer)))))
+        cellname = "InductorDoubled-{:s}".format(h)
+        c = gdstk.Cell(cellname)
+        if cellcache is not None:
+            if cellname in cellcache.keys():
+                return cellcache[cellname]
+            else:
+                cellcache[cellname] = c
+
+        legs = [
+            gdstk.rectangle(
+                (
+                    2 * self.wiring_width + 2 * self.wiring_gap - self.leg_landing,
+                    self.wiring_gap + (self.leg_gap + self.leg_width) * i,
+                ),
+                (
+                    2 * self.wiring_width
+                    + 2 * self.wiring_gap
+                    + self.leg_length
+                    + self.leg_landing,
+                    self.wiring_gap
+                    + (self.leg_gap + self.leg_width) * i
+                    + self.leg_width,
+                ),
+                *self.leg_layer,
+            )
+            for i in range(2 * self.legs)
+        ]
+
+        connections = []
+        connections.extend(
+            gdstk.FlexPath(
+                [
+                    (self.wiring_width + self.wiring_gap / 2, 0),
+                    (
+                        self.wiring_width + self.wiring_gap / 2,
+                        self.wiring_gap + self.leg_width + self.leg_gap / 2,
+                    ),
+                    (
+                        self.wiring_width * 2 + 2 * self.wiring_gap,
+                        self.wiring_gap + self.leg_width + self.leg_gap / 2,
+                    ),
+                ],
+                (self.wiring_width, self.wiring_width),
+                self.wiring_width + self.wiring_gap,
+                layer=tuple(self.wiring_layer)[0],
+                datatype=tuple(self.wiring_layer)[1],
+            ).to_polygons()
+        )
+        for i in range(0, 2 * self.legs - 2, 2):
+            if (i // 2) % 2 == 0:
+                connections.extend(
+                    gdstk.FlexPath(
+                        [
+                            (
+                                2 * self.wiring_width
+                                + 2 * self.wiring_gap
+                                + self.leg_length,
+                                self.wiring_gap
+                                + (self.leg_gap + self.leg_width) * i
+                                + self.leg_width
+                                + self.leg_gap / 2,
+                            ),
+                            (
+                                2 * self.wiring_width
+                                + 2 * self.wiring_gap
+                                + self.leg_length
+                                + self.wiring_width
+                                + 3 * self.wiring_gap / 2,
+                                self.wiring_gap
+                                + (self.leg_gap + self.leg_width) * i
+                                + self.leg_width
+                                + self.leg_gap / 2,
+                            ),
+                            (
+                                2 * self.wiring_width
+                                + 2 * self.wiring_gap
+                                + self.leg_length
+                                + self.wiring_width
+                                + 3 * self.wiring_gap / 2,
+                                self.wiring_gap
+                                + (self.leg_gap + self.leg_width) * i
+                                + self.leg_width
+                                + self.leg_gap / 2
+                                + self.leg_width * 2
+                                + self.leg_gap * 2,
+                            ),
+                            (
+                                2 * self.wiring_width
+                                + 2 * self.wiring_gap
+                                + self.leg_length,
+                                self.wiring_gap
+                                + (self.leg_gap + self.leg_width) * i
+                                + self.leg_width
+                                + self.leg_gap / 2
+                                + self.leg_width * 2
+                                + self.leg_gap * 2,
+                            ),
+                        ],
+                        (self.wiring_width, self.wiring_width),
+                        self.wiring_width + self.wiring_gap,
+                        layer=tuple(self.wiring_layer)[0],
+                        datatype=tuple(self.wiring_layer)[1],
+                    ).to_polygons()
+                )
+            else:
+                connections.extend(
+                    gdstk.FlexPath(
+                        [
+                            (
+                                2 * self.wiring_width + 2 * self.wiring_gap,
+                                self.wiring_gap
+                                + (self.leg_gap + self.leg_width) * i
+                                + self.leg_width
+                                + self.leg_gap / 2,
+                            ),
+                            (
+                                self.wiring_width + self.wiring_gap / 2,
+                                self.wiring_gap
+                                + (self.leg_gap + self.leg_width) * i
+                                + self.leg_width
+                                + self.leg_gap / 2,
+                            ),
+                            (
+                                self.wiring_width + self.wiring_gap / 2,
+                                self.wiring_gap
+                                + (self.leg_gap + self.leg_width) * i
+                                + self.leg_width
+                                + self.leg_gap / 2
+                                + self.leg_width * 2
+                                + self.leg_gap * 2,
+                            ),
+                            (
+                                2 * self.wiring_width + 2 * self.wiring_gap,
+                                self.wiring_gap
+                                + (self.leg_gap + self.leg_width) * i
+                                + self.leg_width
+                                + self.leg_gap / 2
+                                + self.leg_width * 2
+                                + self.leg_gap * 2,
+                            ),
+                        ],
+                        (self.wiring_width, self.wiring_width),
+                        self.wiring_width + self.wiring_gap,
+                        layer=tuple(self.wiring_layer)[0],
+                        datatype=tuple(self.wiring_layer)[1],
+                    ).to_polygons()
+                )
+        connections.extend(
+            [
+                gdstk.rectangle(
+                    (
+                        2 * self.wiring_width + 2 * self.wiring_gap,
+                        (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
+                        + self.leg_width / 2
+                        - self.wiring_width / 2
+                        + self.wiring_gap,
+                    ),
+                    (
+                        self.wiring_width + self.wiring_gap,
+                        (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
+                        + self.leg_width / 2
+                        + self.wiring_width / 2
+                        + self.wiring_gap,
+                    ),
+                    *self.wiring_layer,
+                ),
+                gdstk.rectangle(
+                    (
+                        2 * self.wiring_width + 2 * self.wiring_gap,
+                        (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
+                        + self.leg_width
+                        + self.leg_gap
+                        + self.leg_width / 2
+                        - self.wiring_width / 2
+                        + self.wiring_gap,
+                    ),
+                    (
+                        self.wiring_width + self.wiring_gap,
+                        (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
+                        + self.leg_width
+                        + self.leg_gap
+                        + self.leg_width / 2
+                        + self.wiring_width / 2
+                        + self.wiring_gap,
+                    ),
+                    *self.wiring_layer,
+                ),
+                gdstk.rectangle(
+                    (
+                        self.wiring_width + self.wiring_gap,
+                        (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
+                        + self.leg_width / 2
+                        - self.wiring_width / 2
+                        + self.wiring_gap,
+                    ),
+                    (
+                        self.wiring_width * 2 + self.wiring_gap,
+                        (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
+                        + self.leg_width
+                        + self.leg_gap
+                        + self.leg_width / 2
+                        + self.wiring_width / 2
+                        + self.wiring_gap,
+                    ),
+                    *self.wiring_layer,
+                ),
+            ]
+        )
+        c.add(*legs, *connections)
+        return c
 
 
 @dataclass(eq=True, frozen=True)
@@ -228,13 +480,15 @@ class CapacitorConfig(GeomConfigMarker):
                 [
                     gdstk.rectangle((0, 0), (self.wiring_width, dim[1])),
                     gdstk.rectangle(
-                        (dim[0] - self.wiring_width, 0), (dim[0], dim[1] - self.leg_width - self.leg_gap)
+                        (dim[0] - self.wiring_width, 0),
+                        (dim[0], dim[1] - self.leg_width - self.leg_gap),
                     ),
                     gdstk.rectangle(
                         (self.wiring_width, 0),
                         (
                             dim[0] - self.wiring_width,
-                            self.wiring_width + (self.extra_height if self.extra_height else 0.0),
+                            self.wiring_width
+                            + (self.extra_height if self.extra_height else 0.0),
                         ),
                     ),
                 ],
@@ -242,7 +496,8 @@ class CapacitorConfig(GeomConfigMarker):
                     (port[0], 0),
                     (
                         port[0] + port[1],
-                        self.wiring_width + (self.extra_height if self.extra_height else 0.0),
+                        self.wiring_width
+                        + (self.extra_height if self.extra_height else 0.0),
                     ),
                 ),
                 "not",
@@ -307,7 +562,10 @@ class CapacitorConfig(GeomConfigMarker):
                         ),
                     ),
                     (
-                        self.wiring_width + max(self.leg_length) + self.leg_gap + self.leg_landing,
+                        self.wiring_width
+                        + max(self.leg_length)
+                        + self.leg_gap
+                        + self.leg_landing,
                         (
                             self.wiring_width
                             + (i + 1) * (self.leg_gap + self.leg_width)
@@ -349,7 +607,10 @@ class ViaWire:
                     (b[0], b[1] + self.landing_width / 2),
                 ),
             ]
-            bridge = ((a[0], a[1] - self.bridge_width / 2), (b[0], b[1] + self.bridge_width / 2))
+            bridge = (
+                (a[0], a[1] - self.bridge_width / 2),
+                (b[0], b[1] + self.bridge_width / 2),
+            )
         else:
             landings = [
                 (
@@ -361,13 +622,26 @@ class ViaWire:
                     (b[0] + self.landing_width / 2, b[1] - self.landing_length),
                 ),
             ]
-            bridge = ((a[0] - self.bridge_width / 2, a[1]), (b[0] + self.bridge_width / 2, b[1]))
+            bridge = (
+                (a[0] - self.bridge_width / 2, a[1]),
+                (b[0] + self.bridge_width / 2, b[1]),
+            )
 
         centers = [
-            ((landings[0][1][0] + landings[0][0][0]) / 2, ((landings[0][1][1] + landings[0][0][1])) / 2),
-            ((landings[1][1][0] + landings[1][0][0]) / 2, ((landings[1][1][1] + landings[1][0][1])) / 2),
+            (
+                (landings[0][1][0] + landings[0][0][0]) / 2,
+                (landings[0][1][1] + landings[0][0][1]) / 2,
+            ),
+            (
+                (landings[1][1][0] + landings[1][0][0]) / 2,
+                (landings[1][1][1] + landings[1][0][1]) / 2,
+            ),
         ]
-        vx, vy = (self.via_length, self.via_width) if a[1] == b[1] else (self.via_width, self.via_length)
+        vx, vy = (
+            (self.via_length, self.via_width)
+            if a[1] == b[1]
+            else (self.via_width, self.via_length)
+        )
         vias = [
             (
                 (centers[0][0] - vx / 2, centers[0][1] - vy / 2),
@@ -425,8 +699,16 @@ class BoxConfig(GeomConfigMarker):
 
     def regions(self):
         if self.coupler_via:
-            cgl = self.coupler_gap + self.box_gap + max(self.coupler_via.landing_length, self.coupler_width)
-            cgw = self.coupler_gap + self.box_gap + max(self.coupler_via.landing_width, self.coupler_width)
+            cgl = (
+                self.coupler_gap
+                + self.box_gap
+                + max(self.coupler_via.landing_length, self.coupler_width)
+            )
+            cgw = (
+                self.coupler_gap
+                + self.box_gap
+                + max(self.coupler_via.landing_width, self.coupler_width)
+            )
         else:
             cgl = cgw = self.coupler_gap * 2 + self.coupler_width
         x = [self.feedline.width_half, cgl]
@@ -507,7 +789,10 @@ class BoxConfig(GeomConfigMarker):
             ),
             gdstk.rectangle(
                 (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2])),
-                (sum(r[0][:2]) - self.coupler_gap - self.coupler_width, sum(r[1][:2]) + self.coupler_gap),
+                (
+                    sum(r[0][:2]) - self.coupler_gap - self.coupler_width,
+                    sum(r[1][:2]) + self.coupler_gap,
+                ),
                 *self.coupler_layer,
             ),
         )
@@ -529,7 +814,10 @@ class BoxConfig(GeomConfigMarker):
                 ),
                 gdstk.rectangle(
                     (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2]) - legb),
-                    (sum(r[0][:2]) - self.coupler_gap - self.coupler_width, sum(r[1][:2])),
+                    (
+                        sum(r[0][:2]) - self.coupler_gap - self.coupler_width,
+                        sum(r[1][:2]),
+                    ),
                     *self.coupler_layer,
                 ),
             )
@@ -552,26 +840,44 @@ class BoxConfig(GeomConfigMarker):
                         *self.box_layer,
                     ),
                 )
-                if self.coupler_via and self.coupler_via.landing_length > self.coupler_width:
+                if (
+                    self.coupler_via
+                    and self.coupler_via.landing_length > self.coupler_width
+                ):
                     c.add(
                         gdstk.rectangle(
                             (r[0][0], self.box_width),
-                            (sum(r[0][:2]) - self.coupler_width - self.coupler_gap * 2, sum(r[1][:2])),
+                            (
+                                sum(r[0][:2])
+                                - self.coupler_width
+                                - self.coupler_gap * 2,
+                                sum(r[1][:2]),
+                            ),
                             *self.box_layer,
                         )
                     )
 
             cap_pos = (sum(r[0][:2]), sum(r[1][:2]) - self.capacitor.dimensions[1])
             if self.coupler_via and self.coupler_via.landing_width > self.coupler_width:
-                cap_pos = (cap_pos[0], cap_pos[1] + self.coupler_via.landing_width - self.coupler_width)
+                cap_pos = (
+                    cap_pos[0],
+                    cap_pos[1] + self.coupler_via.landing_width - self.coupler_width,
+                )
             ind_focus = self.inductor.focus_point
-            ind_pos = (self.width / 2 - ind_focus[0], cap_pos[1] - self.inductor.dimensions[1])
-
-            port_offset = max(
-                0, (cap_pos[0] + self.capacitor.wiring_width - self.inductor.wiring_width) - ind_pos[0]
+            ind_pos = (
+                self.width / 2 - ind_focus[0],
+                cap_pos[1] - self.inductor.dimensions[1],
             )
 
-            ind = self.inductor.draw(port_offset, variation_layer=variation_layer, cellcache=cellcache)
+            port_offset = max(
+                0,
+                (cap_pos[0] + self.capacitor.wiring_width - self.inductor.wiring_width)
+                - ind_pos[0],
+            )
+
+            ind = self.inductor.draw(
+                port_offset, variation_layer=variation_layer, cellcache=cellcache
+            )
             cap = self.capacitor.draw(
                 capacitor_tunable,
                 (
@@ -585,9 +891,13 @@ class BoxConfig(GeomConfigMarker):
             c.add(gdstk.Reference(ind, ind_pos), gdstk.Reference(cap, cap_pos))
 
         c.add(
-            gdstk.rectangle((r[0][0], 0), (self.width, self.box_width), *self.box_layer),
             gdstk.rectangle(
-                (self.width - self.box_width, self.box_width), (self.width, self.height), *self.box_layer
+                (r[0][0], 0), (self.width, self.box_width), *self.box_layer
+            ),
+            gdstk.rectangle(
+                (self.width - self.box_width, self.box_width),
+                (self.width, self.height),
+                *self.box_layer,
             ),
             gdstk.rectangle(
                 (r[0][0], self.height - self.box_width),
