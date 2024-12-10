@@ -51,9 +51,9 @@ class InductorConfig(mecstyle.InductorDoubledConfig):
 
 @dataclass(eq=True, frozen=True)
 class CapacitorConfig(mecstyle.CapacitorConfig):
-    legs: int = 32
+    legs: int = 110
     leg_gap: float = 0.75
-    leg_length: tuple[float, float] = (122 + 222 - 150, 150)
+    leg_length: tuple[float, float] = (122 + 222 - 150, 100)
     leg_width: float = 0.75
     leg_landing: float = 0.0
     leg_layer: DrawingLayer = ATA_NB
