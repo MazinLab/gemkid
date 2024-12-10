@@ -19,7 +19,7 @@ maintainers = [
 
 license = {file = "LICENSE.txt"}
 
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
   "numpy>=1.21",
   "gdstk>=0.9.50",

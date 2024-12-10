@@ -4,7 +4,7 @@ import gdstk
 from dataclasses import dataclass
 from typing import Optional
 
-from .layers import ATA_NB, HF, HF_CONTACT
+from .layers import ATA_NB, HF, HF_CONTACT, CONTACT_CUT
 from ..layers import DrawingLayer
 
 from ..geometry import FeedlineConfig
@@ -15,16 +15,16 @@ from .. import mecstyle
 class InductorConfig(mecstyle.InductorConfig):
     legs: int = 16
     leg_gap: float = 0.5
-    leg_length: float = 30.0
-    leg_width: float = 2.0
+    leg_length: float = 40.0
+    leg_width: float = 4.0
     leg_landing: float = 1.5
     leg_layer: DrawingLayer = HF
-    wiring_width: float = 2
+    wiring_width: float = 4
     wiring_gap: float = 0.5
     wiring_layer: DrawingLayer = ATA_NB
     via_over: float = 1.0
-    via_inset: tuple[float, float] = (0, 0.25)
-    via_layer: DrawingLayer = HF_CONTACT
+    via_inset: tuple[float, float] = (0, 0.5)
+    via_layer: DrawingLayer = CONTACT_CUT
 
     def draw(self, port_offset=0, variation_layer=None, cellcache=...):
         c = super().draw(port_offset, variation_layer, cellcache)
@@ -46,10 +46,10 @@ class InductorConfig(mecstyle.InductorConfig):
 
 @dataclass(eq=True, frozen=True)
 class CapacitorConfig(mecstyle.CapacitorConfig):
-    legs: int = 48
-    leg_gap: float = 1.0
+    legs: int = 76
+    leg_gap: float = 0.5
     leg_length: tuple[float, float] = (122, 68)
-    leg_width: float = 1.0
+    leg_width: float = 0.5
     leg_landing: float = 0.0
     leg_layer: DrawingLayer = ATA_NB
     wiring_width: float = 2.0
