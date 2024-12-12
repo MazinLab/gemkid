@@ -231,7 +231,6 @@ class InductorDoubledConfig(GeomConfigMarker):
     @property
     def dimensions(self):
         d = self.wiring_width*4 + self.wiring_gap * 2 + self.leg_length, self.legs * 2 * (self.leg_width + self.leg_gap) - self.leg_gap + (self.leg_gap + self.wiring_gap) / 2
-        print(d)
         return d
 
     def draw(self, port_offset=0.0, variation_layer=None, cellcache={}):
@@ -712,6 +711,20 @@ class BoxConfig(GeomConfigMarker):
     @property
     def dimensions(self):
         return self.width, self.height
+
+    @property
+    def focus_point(self):
+        r = self.regions()
+        if self.capacitor and self.inductor:
+            cap_pos = (sum(r[0][:2]), sum(r[1][:2]) - self.capacitor.dimensions[1])
+            ind_focus = self.inductor.focus_point
+            ind_pos = (
+                self.width / 2 - ind_focus[0],
+                cap_pos[1] - self.inductor.dimensions[1],
+            )
+            return (ind_focus[0] + ind_pos[0], ind_focus[1] + ind_pos[1])
+        else:
+            return None
 
     def regions(self):
         if self.coupler_via:
