@@ -17,13 +17,13 @@ class InductorConfig(mecstyle.InductorDoubledConfig):
     leg_gap: float = 2.0
     leg_length: float = 40.0
     leg_width: float = 4.0
-    leg_landing: float = 1.5
+    leg_landing: float = 5
     leg_layer: DrawingLayer = HF
     wiring_width: float = 4.0
     wiring_gap: float = 2.0
     wiring_layer: DrawingLayer = ATA_NB
     via_over: float = 1.0
-    via_width: float = 1.0
+    via_width: float = 5.0
     via_layer: DrawingLayer = HF_CONTACT
 
     def draw(self, port_offset=0, variation_layer=None, cellcache=...):
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     import numpy as np
 
     lib = gdstk.Library("ue1example.gds")
-    top = gdstk.Cell("tm4top4ph")
+    top = gdstk.Cell("tm4top16ph")
 
     b = BoxConfig(InductorConfig(), CapacitorConfig(), FeedlineConfig())
     caps = np.linspace(0.1, 1.0, 18, endpoint=True).reshape((9, 2))
@@ -128,8 +128,8 @@ if __name__ == "__main__":
     for i in range(9):
         left = b.draw(capacitor_tunable=caps[i][0], coupler_tunable=coups[i][0])
         right = b.draw(capacitor_tunable=caps[i][1], coupler_tunable=coups[i][1])
-        left.name = "left-cap{}-coup{}".format(caps[i, 0], coups[i, 0])
-        right.name = "right-cap{}-coup{}".format(caps[i, 1], coups[i, 1])
+        left.name = "left-wide-cap{}-coup{}".format(caps[i, 0], coups[i, 0])
+        right.name = "right-wide-cap{}-coup{}".format(caps[i, 1], coups[i, 1])
 
         top.add(gdstk.Reference(flstub, origin=(0, (2 * i + 1) * 222)))
         top.add(gdstk.Reference(left, origin=(0, 2 * i * 222)))
@@ -224,7 +224,7 @@ if __name__ == "__main__":
         *HF,
     )
     outline = gdstk.boolean(ec, outline, "not")
-    outline = gdstk.boolean(outline, gdstk.text("4 pH/sq", 250, (-2750, 250)), "not")
+    outline = gdstk.boolean(outline, gdstk.text("16 pH/sq", 250, (-2750, 250)), "not")
     endcap.add(*outline)
     top.add(gdstk.Reference(endcap, (0, -1000)))
     top.add(gdstk.Reference(endcap, (0, 5000), rotation=np.pi))
