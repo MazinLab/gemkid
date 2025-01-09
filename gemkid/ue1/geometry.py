@@ -7,9 +7,14 @@ from typing import Optional
 from .layers import ATA_NB, HF, HF_CONTACT
 from ..layers import DrawingLayer
 
-from ..geometry import FeedlineConfig
 from .. import mecstyle
 
+from .. import geometry
+
+class FeedlineConfig(geometry.FeedlineConfig):
+    a: float = 4.5
+    b: float = 4
+    c: float = 9.5
 
 @dataclass(eq=True, frozen=True)
 class InductorConfig(mecstyle.InductorDoubledConfig):
@@ -106,7 +111,7 @@ class InductorConfig(mecstyle.InductorDoubledConfig):
 class CapacitorConfig(mecstyle.CapacitorConfig):
     legs: int = 38
     leg_gap: float = 2
-    leg_length: tuple[float, float] = (122 + 222 + 218 - 150, 100 + 120)
+    leg_length: tuple[float, float] = (122 + 222 + 210 - 150, 100 + 120)
     leg_width: float = 2
     leg_landing: float = 0.0
     leg_layer: DrawingLayer = ATA_NB
@@ -121,7 +126,7 @@ class BoxConfig(mecstyle.BoxConfig):
     capacitor: Optional[CapacitorConfig]
     feedline: FeedlineConfig = FeedlineConfig(feed_layer=ATA_NB, ground_layer=ATA_NB)
     coupler_width: float = 2.0
-    coupler_gap: float = 2.0
+    coupler_gap: float = 3.5
     coupler_fill: bool = False
     coupler_layer: DrawingLayer = ATA_NB
     coupler_via: Optional[mecstyle.ViaWire] = (
