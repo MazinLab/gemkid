@@ -11,10 +11,13 @@ from .. import mecstyle
 
 from .. import geometry
 
-class FeedlineConfig(geometry.FeedlineConfig):
+@dataclass(eq=True, frozen=True)
+class UEFeedlineConfig(geometry.FeedlineConfig):
     a: float = 4.5
-    b: float = 4
+    b: float = 4.0
     c: float = 9.5
+    feed_layer: tuple[int, int] | DrawingLayer = ATA_NB
+    ground_layer: tuple[int, int] | DrawingLayer = ATA_NB
 
 @dataclass(eq=True, frozen=True)
 class InductorConfig(mecstyle.InductorDoubledConfig):
@@ -124,7 +127,7 @@ class CapacitorConfig(mecstyle.CapacitorConfig):
 class BoxConfig(mecstyle.BoxConfig):
     inductor: Optional[InductorConfig]
     capacitor: Optional[CapacitorConfig]
-    feedline: FeedlineConfig = FeedlineConfig(feed_layer=ATA_NB, ground_layer=ATA_NB)
+    feedline: UEFeedlineConfig = UEFeedlineConfig(feed_layer=ATA_NB, ground_layer=ATA_NB)
     coupler_width: float = 2.0
     coupler_gap: float = 3.5
     coupler_fill: bool = False
@@ -153,20 +156,20 @@ if __name__ == "__main__":
     def make_variant(variant):
         top = gdstk.Cell("tm4top16phv{:d}".format(variant))
 
-        b = BoxConfig(InductorConfig(via_gap = variants[variant][0], via_inset=variants[variant][1]), CapacitorConfig(), FeedlineConfig())
+        b = BoxConfig(InductorConfig(via_gap = variants[variant][0], via_inset=variants[variant][1]), CapacitorConfig(), UEFeedlineConfig())
         caps = np.linspace(0.1, 1.0, 18, endpoint=True).reshape((9, 2))
         coups = np.ones_like(caps)
         coups[::][::] = 0.25
 
-        flstub = FeedlineConfig().draw(222, ports=([], []), cellcache={})
-        flstubmini = FeedlineConfig().draw(4, ports=([], []), cellcache={})
+        flstub = UEFeedlineConfig().draw(222, ports=([], []), cellcache={})
+        flstubmini = UEFeedlineConfig().draw(4, ports=([], []), cellcache={})
 
-        flstub.add(gdstk.rectangle((FeedlineConfig().width_half, 0), (444, 222), *ATA_NB))
-        flstub.add(gdstk.rectangle((-FeedlineConfig().width_half, 0), (-444, 222), *ATA_NB))
+        flstub.add(gdstk.rectangle((UEFeedlineConfig().width_half, 0), (444, 222), *ATA_NB))
+        flstub.add(gdstk.rectangle((-UEFeedlineConfig().width_half, 0), (-444, 222), *ATA_NB))
 
-        flstubmini.add(gdstk.rectangle((FeedlineConfig().width_half, 0), (444, 4), *ATA_NB))
+        flstubmini.add(gdstk.rectangle((UEFeedlineConfig().width_half, 0), (444, 4), *ATA_NB))
         flstubmini.add(
-            gdstk.rectangle((-FeedlineConfig().width_half, 0), (-444, 4), *ATA_NB)
+            gdstk.rectangle((-UEFeedlineConfig().width_half, 0), (-444, 4), *ATA_NB)
         )
         flstub.name = "flstubv{:d}".format(variant)
         flstubmini.name = "flstubmini{:d}".format(variant)
@@ -246,7 +249,7 @@ if __name__ == "__main__":
 
         endcap = gdstk.Cell("endcap{:d}".format(variant))
         ec = gdstk.rectangle((-3000, 0), (3000, 1000), *ATA_NB)
-        f = FeedlineConfig()
+        f = UEFeedlineConfig()
         m = 32 + 16
         outline = gdstk.Polygon(
             [
