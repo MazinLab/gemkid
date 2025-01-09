@@ -289,6 +289,11 @@ if __name__ == "__main__":
         for j in range(-1, 2):
             top.add(gdstk.Reference(tile, (13000*i, 13000*j)))
 
+    for cord in [(-21000, -21000), (-21000, 21000), (21000, -21000), (21000, 21000), (0, 0)]:
+        top.add(gdstk.cross(cord, 800, 50, *ATA_NB))
+        top.add(gdstk.cross(cord, 800, 50, *HF))
+        top.add(gdstk.rectangle((cord[0] - 500, cord[1] - 500), (cord[0] + 500, cord[1] + 500), *HF_CONTACT))
+
     lib.add(top, tile)
 
 
