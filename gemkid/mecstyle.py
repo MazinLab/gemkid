@@ -218,6 +218,7 @@ class InductorDoubledConfig(GeomConfigMarker):
     wiring_width: float
     wiring_gap: float
     wiring_layer: tuple[int, int] | DrawingLayer
+    wiring_extra: float
 
     @property
     def port(self):
@@ -226,7 +227,7 @@ class InductorDoubledConfig(GeomConfigMarker):
 
     @property
     def focus_point(self):
-        return self.dimensions[0] / 2, (self.wiring_width - self.leg_width) / 2 + self.legs * self.leg_width + (self.legs - 0.5) * self.leg_gap
+        return self.dimensions[0] / 2, (self.wiring_width - self.leg_width) / 2 + self.legs * self.leg_width + (self.legs - 0.5) * self.leg_gap + self.wiring_extra
 
     @property
     def dimensions(self):
@@ -246,12 +247,13 @@ class InductorDoubledConfig(GeomConfigMarker):
         legs = [
             gdstk.rectangle(
                 (
-                    2 * self.wiring_width + 2 * self.wiring_gap - self.leg_landing,
+                    2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra - self.leg_landing,
                     self.wiring_gap + (self.leg_gap + self.leg_width) * i,
                 ),
                 (
                     2 * self.wiring_width
                     + 2 * self.wiring_gap
+                    + self.wiring_extra
                     + self.leg_length
                     + self.leg_landing,
                     self.wiring_gap
@@ -273,7 +275,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                         self.wiring_gap + self.leg_width + self.leg_gap / 2,
                     ),
                     (
-                        self.wiring_width * 2 + 2 * self.wiring_gap,
+                        self.wiring_width * 2 + 2 * self.wiring_gap + self.wiring_extra,
                         self.wiring_gap + self.leg_width + self.leg_gap / 2,
                     ),
                 ],
@@ -291,6 +293,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 2 * self.wiring_width
                                 + 2 * self.wiring_gap
+                                + self.wiring_extra
                                 + self.leg_length,
                                 self.wiring_gap
                                 + (self.leg_gap + self.leg_width) * i
@@ -300,6 +303,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 2 * self.wiring_width
                                 + 2 * self.wiring_gap
+                                + 2 * self.wiring_extra
                                 + self.leg_length
                                 + self.wiring_width
                                 + 3 * self.wiring_gap / 2,
@@ -311,6 +315,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 2 * self.wiring_width
                                 + 2 * self.wiring_gap
+                                + 2 * self.wiring_extra
                                 + self.leg_length
                                 + self.wiring_width
                                 + 3 * self.wiring_gap / 2,
@@ -324,6 +329,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 2 * self.wiring_width
                                 + 2 * self.wiring_gap
+                                + self.wiring_extra
                                 + self.leg_length,
                                 self.wiring_gap
                                 + (self.leg_gap + self.leg_width) * i
@@ -344,7 +350,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                     gdstk.FlexPath(
                         [
                             (
-                                2 * self.wiring_width + 2 * self.wiring_gap,
+                                2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
                                 self.wiring_gap
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
@@ -367,7 +373,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                                 + self.leg_gap * 2,
                             ),
                             (
-                                2 * self.wiring_width + 2 * self.wiring_gap,
+                                2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
                                 self.wiring_gap
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
@@ -386,7 +392,7 @@ class InductorDoubledConfig(GeomConfigMarker):
             [
                 gdstk.rectangle(
                     (
-                        2 * self.wiring_width + 2 * self.wiring_gap,
+                        2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
                         (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
                         + self.leg_width / 2
                         - self.wiring_width / 2
@@ -403,7 +409,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                 ),
                 gdstk.rectangle(
                     (
-                        2 * self.wiring_width + 2 * self.wiring_gap,
+                        2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
                         (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
                         + self.leg_width
                         + self.leg_gap
