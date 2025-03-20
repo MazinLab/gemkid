@@ -179,9 +179,10 @@ if __name__ == "__main__":
 
         np.random.seed(42)
         ks = list(resonators.keys())
-        is = np.random.shuffle(np.arange(len(ks)))
+        index = np.arange(len(ks))
+        np.random.shuffle(index)
 
-        freq_func = lambda i: ks[is[i]]
+        freq_func = lambda i: ks[index[i]]
         coup_func = lambda i: resonators[freq_func(i)][0]
         cap_func = lambda i: resonators[freq_func(i)][1]
 
@@ -274,7 +275,7 @@ if __name__ == "__main__":
         endcap = gdstk.Cell("endcap{:d}".format(variant))
         ec = gdstk.rectangle((-3000, 0), (3000, 1000), *HF)
         f = UEFeedlineConfig()
-        m = 32 + 16
+        m = 3
         outline = gdstk.Polygon(
             [
                 (-(f.a + f.b), 1000),
