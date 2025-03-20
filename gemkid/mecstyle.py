@@ -234,6 +234,15 @@ class InductorDoubledConfig(GeomConfigMarker):
         d = self.wiring_width*4 + self.wiring_gap * 2 + self.leg_length, self.legs * 2 * (self.leg_width + self.leg_gap) - self.leg_gap + (self.leg_gap + self.wiring_gap) / 2
         return d
 
+    @property
+    def varsq(self):
+        sq_start = (
+            2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra - self.leg_landing + self.leg_length / 2 - self.leg_width / 2,
+            self.wiring_gap + (self.leg_gap + self.leg_width) * (2 * self.legs - 1)
+        )
+        sq_end = sq_start[0] + self.leg_width, sq_start[1] + self.leg_width
+        return sq_start, sq_end
+
     def draw(self, port_offset=0.0, variation_layer=None, cellcache={}):
         h = hex(abs(hash((hash(self), hash(port_offset), hash(variation_layer)))))
         cellname = "InductorDoubled-{:s}".format(h)
@@ -264,6 +273,16 @@ class InductorDoubledConfig(GeomConfigMarker):
             )
             for i in range(2 * self.legs)
         ]
+
+        if variation_layer:
+            legs = gdstk.boolean(
+                legs,
+                gdstk.rectangle(*self.varsq, *variation_layer),
+                "not",
+                0.0001,
+                *self.leg_layer,
+            )
+            legs.append(gdstk.rectangle(*self.varsq, *variation_layer))
 
         connections = []
         connections.extend(

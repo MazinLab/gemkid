@@ -221,12 +221,10 @@ class SimOptimize(SimGeomABC, SimSweepABC):
                 objective(resplt["response_max"], resplt["response_center"], resplt["qc"]).argmax()
             ]
             x0 = np.array([start[tunes[0]], start[tunes[1]]])
+        obj = lambda x: np.abs(target - objective(manifold(x[0], x[1])[1], manifold(x[0], x[1])[2], manifold(x[0], x[1])[3])) ** 2 + np.abs(freq - manifold(x[0], x[1])[0]) ** 2
+        # obj = lambda x: [objp(x), print(objp(x)), print(x)][0]
         sol = sp.optimize.minimize(
-            lambda x: np.abs(
-                target - objective(manifold(x[0], x[1])[1], manifold(x[0], x[1])[2], manifold(x[0], x[1])[3])
-            )
-            ** 2
-            + np.abs(freq - manifold(x[0], x[1])[0]) ** 2,
+            obj,
             x0,
             bounds=[(0, 1), (0, 1)],
         ).x
