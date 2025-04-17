@@ -146,17 +146,14 @@ if __name__ == "__main__":
     import numpy as np
 
     variants = [
-        (0, 0),
-        (0, 10),
-        (3, 0),
-        (3, 10),
+        0, 20, 30, 50
     ]
 
     lib = gdstk.Library("ue1example.gds")
     def make_variant(variant):
         top = gdstk.Cell("tm4top8phv{:d}".format(variant))
 
-        b = BoxConfig(InductorConfig(via_gap = variants[variant][0], via_inset=variants[variant][1]), CapacitorConfig(), UEFeedlineConfig())
+        b = BoxConfig(InductorConfig(via_gap = 8, via_inset=0), CapacitorConfig(), UEFeedlineConfig())
 
         resonators = {
             4.100: [0.92478644, 0.94588675],
@@ -187,26 +184,50 @@ if __name__ == "__main__":
         cap_func = lambda i: resonators[freq_func(i)][1]
 
         flstub = UEFeedlineConfig().draw(222, ports=([], []), cellcache={})
-        flstubmini = UEFeedlineConfig().draw(4, ports=([], []), cellcache={})
+        flstubmini = UEFeedlineConfig().draw(170, ports=([], []), cellcache={})
 
         flstub.add(gdstk.rectangle((UEFeedlineConfig().width_half, 0), (444, 222), *HF))
         flstub.add(gdstk.rectangle((-UEFeedlineConfig().width_half, 0), (-444, 222), *HF))
 
-        flstubmini.add(gdstk.rectangle((UEFeedlineConfig().width_half, 0), (444, 4), *HF))
+        flstubmini.add(gdstk.rectangle((UEFeedlineConfig().width_half, 0), (444, 170), *HF))
         flstubmini.add(
-            gdstk.rectangle((-UEFeedlineConfig().width_half, 0), (-444, 4), *HF)
+            gdstk.rectangle((-UEFeedlineConfig().width_half, 0), (-444, 170), *HF)
         )
         flstub.name = "flstubv{:d}".format(variant)
         flstubmini.name = "flstubmini{:d}".format(variant)
+
+        rect_right = gdstk.rectangle((222 * 2, 0), (2700, 3500))
+        rect_right = gdstk.boolean(rect_right, gdstk.rectangle((2700-1422.4, 0), (2700, 1524)), "not")
+        rect_left = gdstk.rectangle((-222 * 2, 0), (-2700, 3500))
 
         for i in range(8):
             left = b.draw(capacitor_tunable=cap_func(i * 2), coupler_tunable=coup_func(i * 2), cellcache={})
             right = b.draw(capacitor_tunable=cap_func(i * 2 + 1), coupler_tunable=coup_func(i * 2 + 1), cellcache={})
             left.name = "left-wide-cap{}-coup{}-f{:.04f}-v{:d}".format(cap_func(i * 2), coup_func(i * 2), freq_func(i * 2), variant)
             right.name = "right-wide-cap{}-coup{}-f{:.04f}-v{:d}".format(cap_func(i * 2 + 1), coup_func(i * 2 + 1), freq_func(i * 2 + 1), variant)
+            if variants[variant]:
+                left.add(
+                    gdstk.rectangle(
+                        (b.focus_point[0] - variants[variant] / 2, b.focus_point[1] - (60 + 4) / 2),
+                        (b.focus_point[0] + variants[variant] / 2, b.focus_point[1] + (60 + 4) / 2),
+                        layer=3,
+                        datatype=0,
+                    )
+                )
+                right.add(
+                    gdstk.rectangle(
+                        (b.focus_point[0] - variants[variant] / 2, b.focus_point[1] - (60 + 4) / 2),
+                        (b.focus_point[0] + variants[variant] / 2, b.focus_point[1] + (60 + 4) / 2),
+                        layer=3,
+                        datatype=0,
+                    )
+                )
 
-            top.add(gdstk.Reference(flstub, origin=(0, (2 * i + 1) * 222)))
+            if i != 7:
+                top.add(gdstk.Reference(flstub, origin=(0, (2 * i + 1) * 222)))
             top.add(gdstk.Reference(left, origin=(0, 2 * i * 222)))
+            rect_left = gdstk.boolean(rect_left, gdstk.text("{:.04f}".format(freq_func(i * 2 + 1)), 64, (-680, 2 * i * 222 + 111)), "not")
+            rect_right = gdstk.boolean(rect_right, gdstk.text("{:.04f}".format(freq_func(i * 2)), 64, (+444 + 28, 2 * i * 222 + 111)), "not")
             top.add(
                 gdstk.Reference(
                     right, origin=(0, 2 * i * 222), x_reflection=True, rotation=np.pi
@@ -214,8 +235,6 @@ if __name__ == "__main__":
             )
             lib.add(left, right)
 
-        rect_right = gdstk.rectangle((222 * 2, 0), (3000, 4000), *HF)
-        rect_left = gdstk.rectangle((-222 * 2, 0), (-3000, 4000), *HF)
         for i in range(0, 8):
             for j in range(0, 6):
                 rect_right = gdstk.boolean(
@@ -225,8 +244,8 @@ if __name__ == "__main__":
                             222 * 2 + j * 222 + b.focus_point[0],
                             222 + i * 444 + (j % 2) * 222 + b.focus_point[1],
                         ),
-                        50,
-                        6,
+                        8,
+                        12,
                     ),
                     "not",
                 )
@@ -237,43 +256,20 @@ if __name__ == "__main__":
                             -222 * 2 - j * 222 - 222 + b.focus_point[0],
                             222 + i * 444 + ((j + 1) % 2) * 222 + b.focus_point[1],
                         ),
-                        50,
-                        6,
+                        8,
+                        12,
                     ),
                     "not",
                 )
 
-        rect_left = gdstk.boolean(
-            rect_left, gdstk.rectangle((-3000, 0), (-3000 + 177.8 * 8, 190.5 * 8)), "not"
-        )
-
         milo = [
-            p.scale(8).translate(-3000, 0)
+            p.scale(8).translate(2700-1422.4, 0)
             for p in gdstk.read_gds("./milo.gds")["TOP"].polygons
         ]
-        rect_left = gdstk.boolean(rect_left, milo, "or")
 
-        top.add(gdstk.Reference(flstubmini, origin=(0, 3996)))
-        # top.add(gdstk.rectangle((222, 0), (222 * 2, 4000), *HF))
-        # top.add(gdstk.rectangle((-222, 0), (-222 * 2, 4000), *HF))
-        top.add(*rect_right, *rect_left)
-        top.add(
-            *gdstk.boolean(
-                milo,
-                milo,
-                "or",
-                layer=HF_CONTACT.gds_layer[0],
-                datatype=HF_CONTACT.gds_layer[1],
-            )
-        )
-        top.add(
-            *gdstk.boolean(
-                milo, milo, "or", layer=HF.gds_layer[0], datatype=HF.gds_layer[1]
-            )
-        )
 
         endcap = gdstk.Cell("endcap{:d}".format(variant))
-        ec = gdstk.rectangle((-3000, 0), (3000, 1000), *HF)
+        ec = gdstk.rectangle((-2700, 0), (2700, 950), *HF)
         f = UEFeedlineConfig()
         m = 3
         outline = gdstk.Polygon(
@@ -298,10 +294,134 @@ if __name__ == "__main__":
             *HF,
         )
         outline = gdstk.boolean(ec, outline, "not")
-        outline = gdstk.boolean(outline, gdstk.text("16 pH/sq v{:d}".format(variant), 250, (-2750, 250)), "not")
+        outline = gdstk.boolean(outline, gdstk.text("8 pH/sq v{:d}".format(variant), 250, (-2000, 250)), "not", layer=HF.gds_layer[0], datatype=HF.gds_layer[1])
+
+        surround = gdstk.rectangle((-3000, -950 - 100 - 200), (3000, -950 - 100 - 200 + 6000))
+        surround = gdstk.boolean(
+            surround,
+            gdstk.rectangle((-2800, -950 - 100), (2800, -950 - 100 - 200 + 5800)),
+            "not",
+            layer=HF.gds_layer[0],
+            datatype=HF.gds_layer[1]
+        )
+
+        LS = [20, 40, 60, 80, 100]
+        tlm = [
+            gdstk.rectangle(
+                (-2700 + 150 + 150 + 200 + 8, 2700 // 2 - 4),
+                (-2700 + 150 + 150 + 200 + 8 + sum(LS) + len(LS) * 32 + 32, 2700 // 2 + 4),
+            )
+        ]
+        for i in range(0, len(LS) + 1):
+            s = sum(LS[:i]) + 16 + 4 + i * 32
+            if variant % 2 == 1 and i != len(LS):
+                    top.add(
+                        gdstk.rectangle(
+                            (-2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32, 2700 // 2 - 8),
+                            (-2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 + LS[i], 2700 // 2 + 8),
+                            layer=3,
+                            datatype=0
+                        )
+                    )
+
+            tlm.append(
+                gdstk.rectangle(
+                    (-2700 + 150 + 150, 2700 // 2 - 32 - i * (200 + 16)),
+                    (-2700 + 150 + 150 + 200, 2700 // 2 - 32 - 200 - i * (200 + 16))
+                )
+            )
+            tlm.append(
+                gdstk.rectangle(
+                    (-2700 + 150 + 150, 2700 // 2 + 32 + i * (200 + 16)),
+                    (-2700 + 150 + 150 + 200, 2700 // 2 + 32 + 200 + i * (200 + 16))
+                )
+            )
+    
+            tlm.append(
+                gdstk.rectangle(
+                    (-2700 + 150 + 150 + 200, 2700 // 2 - 32 - i * (200 + 16)),
+                    (-2700 + 150 + 150 + 200 + s, 2700 // 2 - 32 - 8 - i * (200 + 16))
+                )
+            )
+            tlm.append(
+                gdstk.rectangle(
+                    (-2700 + 150 + 150 + 200 + s, 2700 // 2 - 4),
+                    (-2700 + 150 + 150 + 200 + s + 8, 2700 // 2 - 32 - 8 - i * (200 + 16))
+                )
+            )
+            tlm.append(
+                gdstk.rectangle(
+                    (-2700 + 150 + 150 + 200, 2700 // 2 + 32 + i * (200 + 16)),
+                    (-2700 + 150 + 150 + 200 + s, 2700 // 2 + 32 + 8 + i * (200 + 16))
+                )
+            )
+            tlm.append(
+                gdstk.rectangle(
+                    (-2700 + 150 + 150 + 200 + s, 2700 // 2 + 4),
+                    (-2700 + 150 + 150 + 200 + s + 8, 2700 // 2 + 32 + 8 + i * (200 + 16))
+                )
+            )
+
+        
+        max_extent = 32 + 200 + len(LS) * (200 + 16)
+        rect_left = gdstk.boolean(
+            rect_left,
+            gdstk.rectangle(
+                (-2700 + 200, 2700 // 2 -max_extent - 32),
+                (-2700 + 150 + 150 + 200 + 8 + sum(LS) + len(LS) * 32 + 32 + 32, 2700 // 2 + max_extent + 32)
+            ),
+            "not"
+        )
+
+        rect_right = gdstk.boolean(rect_right, milo, "or", layer=HF.gds_layer[0], datatype=HF.gds_layer[1])
+        rect_left = gdstk.boolean(rect_left, rect_left, "or", layer=HF.gds_layer[0], datatype=HF.gds_layer[1])
+            
+        top.add(*gdstk.boolean(tlm, tlm, "or", layer=HF.gds_layer[0], datatype=HF.gds_layer[1]))
+
+        top.add(gdstk.Reference(flstubmini, origin=(0, 3500 - 170)))
+        top.add(*rect_right, *rect_left)
+
+        gold = gdstk.rectangle((-2700, -950), (2700, -950 + 5400))
+        gold = gdstk.boolean(
+            gold,
+            gdstk.rectangle((-2700 + 150, -950 + 150), (2700-150, -950 + 5400 - 150)),
+            "not"
+        )
+        gold = gdstk.boolean(
+            gold,
+            gdstk.rectangle((2700-200, 0), (2700 + 20, 1500)),
+            "not"
+        )
+
+        gold.extend(
+            gdstk.boolean(
+                [
+                    gdstk.regular_polygon((2200, 780), 16, 35),
+                    gdstk.Polygon(
+                        [
+                            [2147.00000, 313.00000],
+                            [2069.00000, 320.00000],
+                            [2052.00000, 418.00000],
+                            [2055.00000, 441.00000],
+                            [2079.00000, 427.00000],
+                            [2115.00000, 418.00000],
+                            [2163.00000, 421.00000],
+                            [2215.00000, 438.00000],
+                            [2214.00000, 332.00000],
+                        ]
+                    )
+                ],
+                milo,
+                "not"
+            )
+        )
+
+        top.add(*gdstk.boolean(gold, gold, "or", layer=100))
+        
         endcap.add(*outline)
-        top.add(gdstk.Reference(endcap, (0, -1000)))
-        top.add(gdstk.Reference(endcap, (0, 5000), rotation=np.pi))
+        top.add(*surround)
+        top.add(gdstk.Reference(endcap, (0, -950)))
+        top.add(gdstk.Reference(endcap, (0, 4500-50), rotation=np.pi))
 
         lib.add(top)
         lib.add(flstub, flstubmini)
@@ -311,23 +431,37 @@ if __name__ == "__main__":
     vs = [make_variant(v) for v in range(4)]
 
     tile = gdstk.Cell("tile")
-    tile.add(gdstk.Reference(vs[0], (-250 - 3000, -5000 - 250)))
-    tile.add(gdstk.Reference(vs[1], (250 - 3000 + 6000, -5000 - 250)))
-    tile.add(gdstk.Reference(vs[2], (-250 - 3000, -5000 + 250 + 6000)))
-    tile.add(gdstk.Reference(vs[3], (250 - 3000 + 6000, -5000 + 250 + 6000)))
+    tile.add(gdstk.Reference(vs[0], (0 - 3000 - 100, 950 - 5400 / 2 + 3000 + 100)))
+    tile.add(gdstk.Reference(vs[1], (0 + 3000 + 100, 950 - 5400 / 2 + 3000 + 100)))
+    tile.add(gdstk.Reference(vs[2], (0 - 3000 - 100, 950 - 5400 / 2 - 3000 - 100)))
+    tile.add(gdstk.Reference(vs[3], (0 + 3000 + 100, 950 - 5400 / 2 - 3000 - 100)))
 
     top = gdstk.Cell("top")
 
     for i in range(-1, 2):
         for j in range(-1, 2):
-            top.add(gdstk.Reference(tile, (13000*i, 13000*j)))
+            top.add(gdstk.Reference(tile, ((6000 * 2 + 200 * 2)*i, (6000 * 2 + 200 * 2)*j)))
 
     for cord in [(-21000, -21000), (-21000, 21000), (21000, -21000), (21000, 21000), (0, 0)]:
         top.add(gdstk.cross(cord, 800, 50, *HF))
-        top.add(gdstk.cross(cord, 800, 50, *HF))
-        top.add(gdstk.rectangle((cord[0] - 500, cord[1] - 500), (cord[0] + 500, cord[1] + 500), *HF_CONTACT))
+        top.add(gdstk.cross(cord, 800, 50, layer=3, datatype=0))
+        top.add(
+            *gdstk.boolean(
+                gdstk.rectangle(
+                    (cord[0] - 600, cord[1] - 600),
+                    (cord[0] + 600, cord[1] + 600),
+                ),
+                gdstk.rectangle(
+                    (cord[0] - 500, cord[1] - 500),
+                    (cord[0] + 500, cord[1] + 500),
+                ),
+                "not",
+                layer = 3,
+                datatype = 0
+            )
+        )
 
     lib.add(top, tile)
 
 
-    lib.write_gds("ue1tm2style.gds")
+    lib.write_gds("ue1tm4style.gds")
