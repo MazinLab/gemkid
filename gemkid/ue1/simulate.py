@@ -125,7 +125,7 @@ if __name__ == "__main__":
             SimRun(),
             SimBulkEstimate(HF_SONNET, HF_VAR_SONNET),
             SimCorner(),
-            SimOptimize({"coupler_tunable": 64, "capacitor_tunable": 512}, HF_SONNET, HF_VAR_SONNET),
+            SimOptimize({"coupler_tunable": 64, "capacitor_tunable": 128}, HF_SONNET, HF_VAR_SONNET),
         ],
     )
     runner.run(parser.parse_args())
