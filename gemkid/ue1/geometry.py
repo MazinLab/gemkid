@@ -158,9 +158,34 @@ if __name__ == "__main__":
         top = gdstk.Cell("tm4top8phv{:d}".format(variant))
 
         b = BoxConfig(InductorConfig(via_gap = variants[variant][0], via_inset=variants[variant][1]), CapacitorConfig(), UEFeedlineConfig())
-        caps = np.linspace(0.1, 1.0, 18, endpoint=True).reshape((9, 2))
-        coups = np.ones_like(caps)
-        coups[::][::] = 0.25
+
+        resonators = {
+            4.900: [0.69493445, 0.98308894],
+            4.950: [0.68219395, 0.95690652],
+            5.000: [0.65396573, 0.93330215],
+            5.050: [0.63650601, 0.91172899],
+            5.100: [0.61045132, 0.89031256],
+            5.150: [0.59047749, 0.87068039],
+            5.200: [0.57542503, 0.85091611],
+            6.100: [0.49279298, 0.56968497],
+            6.200: [0.44751701, 0.54446415],
+            6.300: [0.39819923, 0.51906441],
+            6.400: [0.34838718, 0.4953319 ],
+            7.500: [0.0477069 , 0.27341094],
+            7.625: [0.04790251, 0.27274127],
+            7.750: [0.68063283, 0.22559828],
+            7.875: [0.62439931, 0.21121744],
+            8.000: [0.56386937, 0.19899498],
+        }
+
+        np.random.seed(42)
+        ks = list(resonators.keys())
+        index = np.arange(len(ks))
+        np.random.shuffle(index)
+
+        freq_func = lambda i: ks[index[i]]
+        coup_func = lambda i: resonators[freq_func(i)][0]
+        cap_func = lambda i: resonators[freq_func(i)][1]
 
         flstub = UEFeedlineConfig().draw(222, ports=([], []), cellcache={})
         flstubmini = UEFeedlineConfig().draw(170, ports=([], []), cellcache={})
@@ -180,13 +205,15 @@ if __name__ == "__main__":
         rect_left = gdstk.rectangle((-222 * 2, 0), (-2700, 3500))
 
         for i in range(8):
-            left = b.draw(capacitor_tunable=caps[i][0], coupler_tunable=coups[i][0], cellcache={})
-            right = b.draw(capacitor_tunable=caps[i][1], coupler_tunable=coups[i][1], cellcache={})
-            left.name = "left-wide-cap{}-coup{}-v{:d}".format(caps[i, 0], coups[i, 0], variant)
-            right.name = "right-wide-cap{}-coup{}-v{:d}".format(caps[i, 1], coups[i, 1], variant)
+            left = b.draw(capacitor_tunable=cap_func(i * 2), coupler_tunable=coup_func(i * 2), cellcache={})
+            right = b.draw(capacitor_tunable=cap_func(i * 2 + 1), coupler_tunable=coup_func(i * 2 + 1), cellcache={})
+            left.name = "left-wide-cap{}-coup{}-f{:.04f}-v{:d}".format(cap_func(i * 2), coup_func(i * 2), freq_func(i * 2), variant)
+            right.name = "right-wide-cap{}-coup{}-f{:.04f}-v{:d}".format(cap_func(i * 2 + 1), coup_func(i * 2 + 1), freq_func(i * 2 + 1), variant)
 
             if i != 7:
                 top.add(gdstk.Reference(flstub, origin=(0, (2 * i + 1) * 222)))
+            rect_left = gdstk.boolean(rect_left, gdstk.text("{:.04f}".format(freq_func(i * 2 + 1)), 64, (-680, 2 * i * 222 + 111)), "not")
+            rect_right = gdstk.boolean(rect_right, gdstk.text("{:.04f}".format(freq_func(i * 2)), 64, (+444 + 28, 2 * i * 222 + 111)), "not")
             top.add(gdstk.Reference(left, origin=(0, 2 * i * 222)))
             top.add(
                 gdstk.Reference(
@@ -254,7 +281,7 @@ if __name__ == "__main__":
             *ATA_NB,
         )
         outline = gdstk.boolean(ec, outline, "not")
-        outline = gdstk.boolean(outline, gdstk.text("8 pH/sq v{:d}".format(variant), 250, (-2000, 250)), "not", layer=ATA_NB.gds_layer[0], datatype=ATA_NB.gds_layer[1])
+        outline = gdstk.boolean(outline, gdstk.text("8 pH/sq ATANB v{:d}".format(variant), 250, (-2500, 250)), "not", layer=ATA_NB.gds_layer[0], datatype=ATA_NB.gds_layer[1])
 
         surround = gdstk.rectangle((-3000, -950 - 100 - 200), (3000, -950 - 100 - 200 + 6000))
         surround = gdstk.boolean(
