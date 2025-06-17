@@ -1,4 +1,11 @@
 Gen2_Code/
+*.gds
+*.bmp
+*.dxf
+*.jpg
+*.son
+*.ts
+sondata/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

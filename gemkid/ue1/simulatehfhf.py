@@ -6,10 +6,12 @@ from ..cmd import GeMKIDCMD, SimBulkEstimate, SimEmit, SimRun, SimCorner, SimOpt
 
 from .layers import (
     ATA_NB_SONNET,
+    HF_GP_SONNET,
     HF_SONNET,
     HF_VAR_SONNET,
     TI_GOLD_SONNET,
     ATA_NB_SONNET_3D,
+    HF_GP_SONNET_3D,
     HF_SONNET_3D,
     HF_VAR_SONNET_3D,
     HF_VIA_SONNET_3D,
@@ -29,7 +31,7 @@ class UE1Testbench(simulate.LeftFeedlineTestbench):
 
     @property
     def _layer_stack(self) -> list[simulate.SonnetLayer]:
-        return [ATA_NB_SONNET, HF_SONNET, HF_VAR_SONNET, TI_GOLD_SONNET]
+        return [ATA_NB_SONNET, HF_SONNET, HF_GP_SONNET, HF_VAR_SONNET, TI_GOLD_SONNET]
 
     @property
     def _cell(self) -> gdstk.Cell:
@@ -72,7 +74,7 @@ class UE13DTestBench(simulate.LeftFeedlineTestbench):
 
     @property
     def _layer_stack(self) -> list[simulate.SonnetLayer]:
-        return [ATA_NB_SONNET_3D, HF_SONNET_3D, HF_VAR_SONNET_3D, HF_VIA_SONNET_3D, TI_GOLD_SONNET_3D]
+        return [ATA_NB_SONNET_3D, HF_GP_SONNET_3D, HF_SONNET_3D, HF_VAR_SONNET_3D, HF_VIA_SONNET_3D, TI_GOLD_SONNET_3D]
 
     @property
     def _cell(self) -> gdstk.Cell:
@@ -105,7 +107,7 @@ class UE1CMD(GeMKIDCMD):
 
 
 if __name__ == "__main__":
-    from .geometry import BoxConfig
+    from .geometryhfhf import BoxConfig
 
     import argparse
     import logging

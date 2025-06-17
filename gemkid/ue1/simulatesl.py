@@ -105,7 +105,7 @@ class UE1CMD(GeMKIDCMD):
 
 
 if __name__ == "__main__":
-    from .geometry import BoxConfig
+    from .geometrysl import BoxConfig
 
     import argparse
     import logging

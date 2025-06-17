@@ -37,8 +37,10 @@ simulation = [
 [tool.setuptools]
 packages = ["gemkid"]
 
-[tool.pdm.dev-dependencies]
+
+[dependency-groups]
 dev = [
     "ipykernel>=6.29.5",
     "jupyterlab>=4.2.5",
+    "tqdm>=4.67.1",
 ]

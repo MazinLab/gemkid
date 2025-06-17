@@ -218,6 +218,33 @@ class InductorDoubledConfig(GeomConfigMarker):
     wiring_width: float
     wiring_gap: float
     wiring_layer: tuple[int, int] | DrawingLayer
+    wiring_extra: float
+
+    @property
+    def port(self):
+        return self.wiring_width, self.wiring_width
+
+
+    @property
+    def focus_point(self):
+        return (
+            self.leg_length / 2 + 2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
+            self.legs * (self.leg_gap + self.leg_width) - self.leg_gap / 2
+        )
+
+    @property
+    def dimensions(self):
+        d = self.wiring_width*4 + self.wiring_gap * 2 + self.leg_length, self.legs * 2 * (self.leg_width + self.leg_gap) - self.leg_gap + (self.leg_gap + self.wiring_gap) / 2
+        return d
+
+    @property
+    def varsq(self):
+        sq_start = (
+            2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra - self.leg_landing + self.leg_length / 2 - self.leg_width / 2,
+            self.wiring_gap + (self.leg_gap + self.leg_width) * (2 * self.legs - 1)
+        )
+        sq_end = sq_start[0] + self.leg_width, sq_start[1] + self.leg_width
+        return sq_start, sq_end
 
     def draw(self, port_offset=0.0, variation_layer=None, cellcache={}):
         h = hex(abs(hash((hash(self), hash(port_offset), hash(variation_layer)))))
@@ -232,12 +259,13 @@ class InductorDoubledConfig(GeomConfigMarker):
         legs = [
             gdstk.rectangle(
                 (
-                    2 * self.wiring_width + 2 * self.wiring_gap - self.leg_landing,
+                    2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra - self.leg_landing,
                     self.wiring_gap + (self.leg_gap + self.leg_width) * i,
                 ),
                 (
                     2 * self.wiring_width
                     + 2 * self.wiring_gap
+                    + self.wiring_extra
                     + self.leg_length
                     + self.leg_landing,
                     self.wiring_gap
@@ -249,6 +277,16 @@ class InductorDoubledConfig(GeomConfigMarker):
             for i in range(2 * self.legs)
         ]
 
+        if variation_layer:
+            legs = gdstk.boolean(
+                legs,
+                gdstk.rectangle(*self.varsq, *variation_layer),
+                "not",
+                0.0001,
+                *self.leg_layer,
+            )
+            legs.append(gdstk.rectangle(*self.varsq, *variation_layer))
+
         connections = []
         connections.extend(
             gdstk.FlexPath(
@@ -259,7 +297,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                         self.wiring_gap + self.leg_width + self.leg_gap / 2,
                     ),
                     (
-                        self.wiring_width * 2 + 2 * self.wiring_gap,
+                        self.wiring_width * 2 + 2 * self.wiring_gap + self.wiring_extra,
                         self.wiring_gap + self.leg_width + self.leg_gap / 2,
                     ),
                 ],
@@ -277,6 +315,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 2 * self.wiring_width
                                 + 2 * self.wiring_gap
+                                + self.wiring_extra
                                 + self.leg_length,
                                 self.wiring_gap
                                 + (self.leg_gap + self.leg_width) * i
@@ -286,6 +325,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 2 * self.wiring_width
                                 + 2 * self.wiring_gap
+                                + 2 * self.wiring_extra
                                 + self.leg_length
                                 + self.wiring_width
                                 + 3 * self.wiring_gap / 2,
@@ -297,6 +337,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 2 * self.wiring_width
                                 + 2 * self.wiring_gap
+                                + 2 * self.wiring_extra
                                 + self.leg_length
                                 + self.wiring_width
                                 + 3 * self.wiring_gap / 2,
@@ -310,6 +351,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 2 * self.wiring_width
                                 + 2 * self.wiring_gap
+                                + self.wiring_extra
                                 + self.leg_length,
                                 self.wiring_gap
                                 + (self.leg_gap + self.leg_width) * i
@@ -330,7 +372,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                     gdstk.FlexPath(
                         [
                             (
-                                2 * self.wiring_width + 2 * self.wiring_gap,
+                                2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
                                 self.wiring_gap
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
@@ -353,7 +395,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                                 + self.leg_gap * 2,
                             ),
                             (
-                                2 * self.wiring_width + 2 * self.wiring_gap,
+                                2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
                                 self.wiring_gap
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
@@ -372,7 +414,7 @@ class InductorDoubledConfig(GeomConfigMarker):
             [
                 gdstk.rectangle(
                     (
-                        2 * self.wiring_width + 2 * self.wiring_gap,
+                        2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
                         (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
                         + self.leg_width / 2
                         - self.wiring_width / 2
@@ -389,7 +431,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                 ),
                 gdstk.rectangle(
                     (
-                        2 * self.wiring_width + 2 * self.wiring_gap,
+                        2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
                         (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
                         + self.leg_width
                         + self.leg_gap
@@ -429,7 +471,8 @@ class InductorDoubledConfig(GeomConfigMarker):
                 ),
             ]
         )
-        c.add(*legs, *connections)
+        mirrorline = (0, self.dimensions[1] / 2), (self.dimensions[0], self.dimensions[1] / 2)
+        c.add(*[l.mirror(*mirrorline) for l in legs], *[c.mirror(*mirrorline) for c in connections])
         return c
 
 
@@ -696,6 +739,20 @@ class BoxConfig(GeomConfigMarker):
     @property
     def dimensions(self):
         return self.width, self.height
+
+    @property
+    def focus_point(self):
+        r = self.regions()
+        if self.capacitor and self.inductor:
+            cap_pos = (sum(r[0][:2]), sum(r[1][:2]) - self.capacitor.dimensions[1])
+            ind_focus = self.inductor.focus_point
+            ind_pos = (
+                self.width / 2 - ind_focus[0],
+                cap_pos[1] - self.inductor.dimensions[1],
+            )
+            return (ind_focus[0] + ind_pos[0], ind_focus[1] + ind_pos[1])
+        else:
+            return None
 
     def regions(self):
         if self.coupler_via:
