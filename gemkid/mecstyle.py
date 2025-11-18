@@ -68,9 +68,7 @@ class InductorConfig(GeomConfigMarker):
                 ),
                 (
                     regions[0][0] + self.leg_length + self.leg_landing,
-                    regions[1][0]
-                    + i * (self.leg_width + self.leg_gap)
-                    + self.leg_width,
+                    regions[1][0] + i * (self.leg_width + self.leg_gap) + self.leg_width,
                 ),
                 *self.leg_layer,
             )
@@ -219,29 +217,46 @@ class InductorDoubledConfig(GeomConfigMarker):
     wiring_gap: float
     wiring_layer: tuple[int, int] | DrawingLayer
     wiring_extra: float
+    wiring_extra_height: float
 
     @property
     def port(self):
         return self.wiring_width, self.wiring_width
 
-
     @property
     def focus_point(self):
         return (
             self.leg_length / 2 + 2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
-            self.legs * (self.leg_gap + self.leg_width) - self.leg_gap / 2
+            self.wiring_gap
+            + self.wiring_extra_height
+            + self.legs * (self.leg_gap + self.leg_width)
+            - self.leg_gap / 2,
         )
 
     @property
     def dimensions(self):
-        d = self.wiring_width*4 + self.wiring_gap * 2 + self.leg_length, self.legs * 2 * (self.leg_width + self.leg_gap) - self.leg_gap + (self.leg_gap + self.wiring_gap) / 2
+        d = (
+            self.wiring_width * 4 + self.wiring_gap * 2 + self.leg_length,
+            self.wiring_gap
+            + self.wiring_extra_height
+            + self.legs * 2 * (self.leg_width + self.leg_gap)
+            - self.leg_gap
+            + (self.leg_gap + self.wiring_gap) / 2,
+        )
         return d
 
     @property
     def varsq(self):
         sq_start = (
-            2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra - self.leg_landing + self.leg_length / 2 - self.leg_width / 2,
-            self.wiring_gap + (self.leg_gap + self.leg_width) * (2 * self.legs - 1)
+            2 * self.wiring_width
+            + 2 * self.wiring_gap
+            + self.wiring_extra
+            - self.leg_landing
+            + self.leg_length / 2
+            - self.leg_width / 2,
+            self.wiring_gap
+            + self.wiring_extra_height
+            + (self.leg_gap + self.leg_width) * (2 * self.legs - 1),
         )
         sq_end = sq_start[0] + self.leg_width, sq_start[1] + self.leg_width
         return sq_start, sq_end
@@ -260,7 +275,7 @@ class InductorDoubledConfig(GeomConfigMarker):
             gdstk.rectangle(
                 (
                     2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra - self.leg_landing,
-                    self.wiring_gap + (self.leg_gap + self.leg_width) * i,
+                    self.wiring_gap + self.wiring_extra_height + (self.leg_gap + self.leg_width) * i,
                 ),
                 (
                     2 * self.wiring_width
@@ -269,6 +284,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                     + self.leg_length
                     + self.leg_landing,
                     self.wiring_gap
+                    + self.wiring_extra_height
                     + (self.leg_gap + self.leg_width) * i
                     + self.leg_width,
                 ),
@@ -294,11 +310,11 @@ class InductorDoubledConfig(GeomConfigMarker):
                     (self.wiring_width + self.wiring_gap / 2, 0),
                     (
                         self.wiring_width + self.wiring_gap / 2,
-                        self.wiring_gap + self.leg_width + self.leg_gap / 2,
+                        self.wiring_gap + self.wiring_extra_height + self.leg_width + self.leg_gap / 2,
                     ),
                     (
                         self.wiring_width * 2 + 2 * self.wiring_gap + self.wiring_extra,
-                        self.wiring_gap + self.leg_width + self.leg_gap / 2,
+                        self.wiring_gap + self.wiring_extra_height + self.leg_width + self.leg_gap / 2,
                     ),
                 ],
                 (self.wiring_width, self.wiring_width),
@@ -318,6 +334,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                                 + self.wiring_extra
                                 + self.leg_length,
                                 self.wiring_gap
+                                + self.wiring_extra_height
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
                                 + self.leg_gap / 2,
@@ -330,6 +347,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                                 + self.wiring_width
                                 + 3 * self.wiring_gap / 2,
                                 self.wiring_gap
+                                + self.wiring_extra_height
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
                                 + self.leg_gap / 2,
@@ -342,6 +360,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                                 + self.wiring_width
                                 + 3 * self.wiring_gap / 2,
                                 self.wiring_gap
+                                + self.wiring_extra_height
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
                                 + self.leg_gap / 2
@@ -354,6 +373,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                                 + self.wiring_extra
                                 + self.leg_length,
                                 self.wiring_gap
+                                + self.wiring_extra_height
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
                                 + self.leg_gap / 2
@@ -374,6 +394,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
                                 self.wiring_gap
+                                + self.wiring_extra_height
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
                                 + self.leg_gap / 2,
@@ -381,6 +402,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 self.wiring_width + self.wiring_gap / 2,
                                 self.wiring_gap
+                                + self.wiring_extra_height
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
                                 + self.leg_gap / 2,
@@ -388,6 +410,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 self.wiring_width + self.wiring_gap / 2,
                                 self.wiring_gap
+                                + self.wiring_extra_height
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
                                 + self.leg_gap / 2
@@ -397,6 +420,7 @@ class InductorDoubledConfig(GeomConfigMarker):
                             (
                                 2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
                                 self.wiring_gap
+                                + self.wiring_extra_height
                                 + (self.leg_gap + self.leg_width) * i
                                 + self.leg_width
                                 + self.leg_gap / 2
@@ -418,14 +442,16 @@ class InductorDoubledConfig(GeomConfigMarker):
                         (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
                         + self.leg_width / 2
                         - self.wiring_width / 2
-                        + self.wiring_gap,
+                        + self.wiring_gap
+                        + self.wiring_extra_height,
                     ),
                     (
                         self.wiring_width + self.wiring_gap,
                         (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
                         + self.leg_width / 2
                         + self.wiring_width / 2
-                        + self.wiring_gap,
+                        + self.wiring_gap
+                        + self.wiring_extra_height,
                     ),
                     *self.wiring_layer,
                 ),
@@ -437,7 +463,8 @@ class InductorDoubledConfig(GeomConfigMarker):
                         + self.leg_gap
                         + self.leg_width / 2
                         - self.wiring_width / 2
-                        + self.wiring_gap,
+                        + self.wiring_gap
+                        + self.wiring_extra_height,
                     ),
                     (
                         self.wiring_width + self.wiring_gap,
@@ -446,7 +473,8 @@ class InductorDoubledConfig(GeomConfigMarker):
                         + self.leg_gap
                         + self.leg_width / 2
                         + self.wiring_width / 2
-                        + self.wiring_gap,
+                        + self.wiring_gap
+                        + self.wiring_extra_height,
                     ),
                     *self.wiring_layer,
                 ),
@@ -456,7 +484,8 @@ class InductorDoubledConfig(GeomConfigMarker):
                         (self.legs - 1) * 2 * (self.leg_width + self.leg_gap)
                         + self.leg_width / 2
                         - self.wiring_width / 2
-                        + self.wiring_gap,
+                        + self.wiring_gap
+                        + self.wiring_extra_height,
                     ),
                     (
                         self.wiring_width * 2 + self.wiring_gap,
@@ -465,7 +494,8 @@ class InductorDoubledConfig(GeomConfigMarker):
                         + self.leg_gap
                         + self.leg_width / 2
                         + self.wiring_width / 2
-                        + self.wiring_gap,
+                        + self.wiring_gap
+                        + self.wiring_extra_height,
                     ),
                     *self.wiring_layer,
                 ),
@@ -530,8 +560,7 @@ class CapacitorConfig(GeomConfigMarker):
                         (self.wiring_width, 0),
                         (
                             dim[0] - self.wiring_width,
-                            self.wiring_width
-                            + (self.extra_height if self.extra_height else 0.0),
+                            self.wiring_width + (self.extra_height if self.extra_height else 0.0),
                         ),
                     ),
                 ],
@@ -539,8 +568,7 @@ class CapacitorConfig(GeomConfigMarker):
                     (port[0], 0),
                     (
                         port[0] + port[1],
-                        self.wiring_width
-                        + (self.extra_height if self.extra_height else 0.0),
+                        self.wiring_width + (self.extra_height if self.extra_height else 0.0),
                     ),
                 ),
                 "not",
@@ -605,10 +633,7 @@ class CapacitorConfig(GeomConfigMarker):
                         ),
                     ),
                     (
-                        self.wiring_width
-                        + max(self.leg_length)
-                        + self.leg_gap
-                        + self.leg_landing,
+                        self.wiring_width + max(self.leg_length) + self.leg_gap + self.leg_landing,
                         (
                             self.wiring_width
                             + (i + 1) * (self.leg_gap + self.leg_width)
@@ -680,11 +705,7 @@ class ViaWire:
                 (landings[1][1][1] + landings[1][0][1]) / 2,
             ),
         ]
-        vx, vy = (
-            (self.via_length, self.via_width)
-            if a[1] == b[1]
-            else (self.via_width, self.via_length)
-        )
+        vx, vy = (self.via_length, self.via_width) if a[1] == b[1] else (self.via_width, self.via_length)
         vias = [
             (
                 (centers[0][0] - vx / 2, centers[0][1] - vy / 2),
@@ -756,16 +777,8 @@ class BoxConfig(GeomConfigMarker):
 
     def regions(self):
         if self.coupler_via:
-            cgl = (
-                self.coupler_gap
-                + self.box_gap
-                + max(self.coupler_via.landing_length, self.coupler_width)
-            )
-            cgw = (
-                self.coupler_gap
-                + self.box_gap
-                + max(self.coupler_via.landing_width, self.coupler_width)
-            )
+            cgl = self.coupler_gap + self.box_gap + max(self.coupler_via.landing_length, self.coupler_width)
+            cgw = self.coupler_gap + self.box_gap + max(self.coupler_via.landing_width, self.coupler_width)
         else:
             cgl = cgw = self.coupler_gap * 2 + self.coupler_width
         x = [self.feedline.width_half, cgl]
@@ -897,17 +910,12 @@ class BoxConfig(GeomConfigMarker):
                         *self.box_layer,
                     ),
                 )
-                if (
-                    self.coupler_via
-                    and self.coupler_via.landing_length > self.coupler_width
-                ):
+                if self.coupler_via and self.coupler_via.landing_length > self.coupler_width:
                     c.add(
                         gdstk.rectangle(
                             (r[0][0], self.box_width),
                             (
-                                sum(r[0][:2])
-                                - self.coupler_width
-                                - self.coupler_gap * 2,
+                                sum(r[0][:2]) - self.coupler_width - self.coupler_gap * 2,
                                 sum(r[1][:2]),
                             ),
                             *self.box_layer,
@@ -928,13 +936,10 @@ class BoxConfig(GeomConfigMarker):
 
             port_offset = max(
                 0,
-                (cap_pos[0] + self.capacitor.wiring_width - self.inductor.wiring_width)
-                - ind_pos[0],
+                (cap_pos[0] + self.capacitor.wiring_width - self.inductor.wiring_width) - ind_pos[0],
             )
 
-            ind = self.inductor.draw(
-                port_offset, variation_layer=variation_layer, cellcache=cellcache
-            )
+            ind = self.inductor.draw(port_offset, variation_layer=variation_layer, cellcache=cellcache)
             cap = self.capacitor.draw(
                 capacitor_tunable,
                 (
@@ -948,9 +953,7 @@ class BoxConfig(GeomConfigMarker):
             c.add(gdstk.Reference(ind, ind_pos), gdstk.Reference(cap, cap_pos))
 
         c.add(
-            gdstk.rectangle(
-                (r[0][0], 0), (self.width, self.box_width), *self.box_layer
-            ),
+            gdstk.rectangle((r[0][0], 0), (self.width, self.box_width), *self.box_layer),
             gdstk.rectangle(
                 (self.width - self.box_width, self.box_width),
                 (self.width, self.height),
