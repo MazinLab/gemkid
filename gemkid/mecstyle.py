@@ -240,8 +240,7 @@ class InductorDoubledConfig(GeomConfigMarker):
             self.wiring_gap
             + self.wiring_extra_height
             + self.legs * 2 * (self.leg_width + self.leg_gap)
-            - self.leg_gap
-            + (self.leg_gap + self.wiring_gap) / 2,
+            - self.leg_gap,
         )
         return d
 
@@ -750,6 +749,7 @@ class BoxConfig(GeomConfigMarker):
     box_layer: tuple[int, int] | DrawingLayer
     width: float
     height: float
+    extended_coupler_pullback: bool
 
     @property
     def coupler_range(self):
@@ -803,6 +803,8 @@ class BoxConfig(GeomConfigMarker):
         assert ((self.inductor is not None) and (self.capacitor is not None)) or (
             self.inductor is None and self.capacitor is None
         )
+        if self.extended_coupler_pullback:
+            assert self.coupler_via is None
         r = self.regions()
         h = hex(abs(hash((self, coupler_tunable, capacitor_tunable, variation_layer))))
         subcells = []
@@ -822,8 +824,9 @@ class BoxConfig(GeomConfigMarker):
         )
         c.add(gdstk.Reference(f, (0, 0)))
         subcells.append(f)
+        coupler_legs = []
         if self.coupler_via is None:
-            c.add(
+            coupler_legs.append(
                 gdstk.rectangle(
                     (self.feedline.a, sum(r[1][:2]) + self.coupler_gap),
                     (
@@ -851,46 +854,94 @@ class BoxConfig(GeomConfigMarker):
                 )
             )
         y_inset = self.box_gap if self.coupler_via else self.coupler_gap
-        c.add(
-            gdstk.rectangle(
-                (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:3]) - y_inset),
-                (sum(r[0][:2]), sum(r[1][:3]) - y_inset - self.coupler_width),
-                *self.coupler_layer,
-            ),
-            gdstk.rectangle(
-                (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2])),
-                (
-                    sum(r[0][:2]) - self.coupler_gap - self.coupler_width,
-                    sum(r[1][:2]) + self.coupler_gap,
+        coupler_legs.extend(
+            [
+                gdstk.rectangle(
+                    (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:3]) - y_inset),
+                    (sum(r[0][:2]), sum(r[1][:3]) - y_inset - self.coupler_width),
+                    *self.coupler_layer,
                 ),
-                *self.coupler_layer,
-            ),
+                gdstk.rectangle(
+                    (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2])),
+                    (
+                        sum(r[0][:2]) - self.coupler_gap - self.coupler_width,
+                        sum(r[1][:2]) + self.coupler_gap,
+                    ),
+                    *self.coupler_layer,
+                ),
+            ]
         )
         if self.capacitor and self.inductor:
+            remap = lambda x, l, h, l2, h2: l2 + (x - l) * (h2 - l2) / (h - l)
             lega = self.capacitor.dimensions[0]
             legb = self.capacitor.dimensions[1]
             if self.coupler_via and self.coupler_via.landing_width > self.coupler_width:
                 legb -= self.coupler_via.landing_width - self.coupler_width
-            lega *= coupler_tunable
-            legb *= coupler_tunable
-            c.add(
-                gdstk.rectangle(
-                    (sum(r[0][:2]), sum(r[1][:3]) - y_inset),
-                    (
-                        sum(r[0][:2]) + lega,
-                        sum(r[1][:3]) - y_inset - self.coupler_width,
+            if self.extended_coupler_pullback:
+                lega *= remap(coupler_tunable, 0.5, 1, 0, 1)
+                legb *= remap(coupler_tunable, 0.5, 1, 0, 1)
+                lega = max(lega, 0)
+                legb = max(legb, 0)
+            else:
+                lega *= coupler_tunable
+                legb *= coupler_tunable
+            coupler_legs.extend(
+                [
+                    gdstk.rectangle(
+                        (sum(r[0][:2]), sum(r[1][:3]) - y_inset),
+                        (
+                            sum(r[0][:2]) + lega,
+                            sum(r[1][:3]) - y_inset - self.coupler_width,
+                        ),
+                        *self.coupler_layer,
                     ),
-                    *self.coupler_layer,
-                ),
-                gdstk.rectangle(
-                    (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2]) - legb),
-                    (
-                        sum(r[0][:2]) - self.coupler_gap - self.coupler_width,
-                        sum(r[1][:2]),
+                    gdstk.rectangle(
+                        (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:2]) - legb),
+                        (
+                            sum(r[0][:2]) - self.coupler_gap - self.coupler_width,
+                            sum(r[1][:2]),
+                        ),
+                        *self.coupler_layer,
                     ),
-                    *self.coupler_layer,
-                ),
+                ]
             )
+            if self.extended_coupler_pullback and coupler_tunable < 0.5:
+                xstop = remap(
+                    coupler_tunable,
+                    0.25,
+                    0.50,
+                    sum(r[0][:1]) - self.feedline.b - self.feedline.c,
+                    sum(r[0][:2]) + self.coupler_gap,
+                )
+                xstop = max(xstop, 0)
+                andrect = gdstk.rectangle(
+                    (
+                        sum(r[0][:1]) - self.feedline.b - self.feedline.c,
+                        sum(r[1][:3]) - self.coupler_gap * 2 - self.coupler_width,
+                    ),
+                    (xstop, sum(r[1][:3])),
+                )
+                coupler_legs = gdstk.boolean(coupler_legs, andrect, "and", 0.0001, *self.coupler_layer)
+                if coupler_tunable <= 0.25:
+                    xstop = remap(
+                        coupler_tunable,
+                        0.25,
+                        0.00,
+                        sum(r[0][:1]) - self.feedline.c,
+                        sum(r[0][:2]) - self.coupler_gap,
+                    )
+                    coupler_legs.append(
+                        gdstk.rectangle(
+                            (
+                                sum(r[0][:1]) - self.feedline.c,
+                                sum(r[1][:3]) - self.coupler_gap * 2 - self.coupler_width,
+                            ),
+                            (xstop + 0.5, sum(r[1][:3])),
+                            *self.coupler_layer
+                        )
+                    )
+            c.add(*coupler_legs)
+
             if self.coupler_fill:
                 c.add(
                     gdstk.rectangle(

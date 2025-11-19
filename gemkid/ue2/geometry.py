@@ -229,13 +229,13 @@ class InductorConfig(mecstyle.InductorDoubledConfig):
 
 @dataclass(eq=True, frozen=True)
 class CapacitorConfig(mecstyle.CapacitorConfig):
-    legs: int = 42
+    legs: int = 70
     leg_gap: float = 1
-    leg_length: tuple[float, float] = (222 - 32 - 2 - 8 - 3.5, 140)
-    leg_width: float = 2
+    leg_length: tuple[float, float] = (222 - 33, 140)
+    leg_width: float = 1
     leg_landing: float = 0.0
     leg_layer: DrawingLayer = ATA_NB
-    wiring_width: float = 6.0
+    wiring_width: float = 4.0
     wiring_layer: DrawingLayer = ATA_NB
     extra_height: float = 0.0
 
@@ -245,9 +245,9 @@ class BoxConfig(mecstyle.BoxConfig):
     inductor: Optional[InductorConfig]
     capacitor: Optional[CapacitorConfig]
     feedline: UEFeedlineConfig = UEFeedlineConfig(feed_layer=ATA_NB, ground_layer=ATA_NB)
-    coupler_width: float = 2.0
-    coupler_gap: float = 3.5
-    coupler_fill: bool = False
+    coupler_width: float = 1.0
+    coupler_gap: float = 1.0
+    coupler_fill: bool = True
     coupler_layer: DrawingLayer = ATA_NB
     coupler_via: Optional[mecstyle.ViaWire] = (
         None  # mecstyle.ViaWire(2.0, HF, False, 2.0, 2.0, ATA_NB, 2.0, 2.0, HF_CONTACT)
@@ -257,6 +257,7 @@ class BoxConfig(mecstyle.BoxConfig):
     box_layer: DrawingLayer = ATA_NB
     width: float = 222
     height: float = 222
+    extended_coupler_pullback: bool = True
 
 
 if __name__ == "__main__":
@@ -281,8 +282,8 @@ if __name__ == "__main__":
         )
 
         resonators = {
-            4.900: [0.69493445, 0.98308894],
-            4.950: [0.68219395, 0.95690652],
+            4.900: [0.0, 0.0],
+            4.950: [0.01, 0.01],
             5.000: [0.65396573, 0.93330215],
             5.050: [0.63650601, 0.91172899],
             5.100: [0.61045132, 0.89031256],

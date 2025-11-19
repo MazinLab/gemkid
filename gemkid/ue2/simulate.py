@@ -50,7 +50,7 @@ class UE2Testbench(simulate.LeftFeedlineTestbench):
 
     @property
     def _filename(self):
-        return "UE1" + super()._filename
+        return "UE2" + super()._filename
 
     @property
     def _portlevel(self):
