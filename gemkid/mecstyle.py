@@ -750,6 +750,7 @@ class BoxConfig(GeomConfigMarker):
     width: float
     height: float
     extended_coupler_pullback: bool
+    double_coupler: bool
 
     @property
     def coupler_range(self):
@@ -805,6 +806,7 @@ class BoxConfig(GeomConfigMarker):
         )
         if self.extended_coupler_pullback:
             assert self.coupler_via is None
+            assert not self.double_coupler
         r = self.regions()
         h = hex(abs(hash((self, coupler_tunable, capacitor_tunable, variation_layer))))
         subcells = []
@@ -882,6 +884,11 @@ class BoxConfig(GeomConfigMarker):
                 legb *= remap(coupler_tunable, 0.5, 1, 0, 1)
                 lega = max(lega, 0)
                 legb = max(legb, 0)
+            elif self.double_coupler:
+                ratio = remap(coupler_tunable, 0, 0.5, 0, 1)
+                ratio = min(max(ratio, 0), 1)
+                lega *= ratio
+                legb *= ratio
             else:
                 lega *= coupler_tunable
                 legb *= coupler_tunable
@@ -905,6 +912,30 @@ class BoxConfig(GeomConfigMarker):
                     ),
                 ]
             )
+            if self.double_coupler and coupler_tunable > 0.5:
+                legc = remap(coupler_tunable, 0.5, 1.0, sum(r[0][:2]) - self.coupler_gap, sum(r[0][:2]) + self.capacitor.dimensions[0])
+                legd = remap(coupler_tunable, 0.5, 1.0, sum(r[1][:2]) + self.coupler_gap, sum(r[1][:2]) - self.capacitor.dimensions[1])
+
+                coupler_legs.extend(
+                    [
+                        gdstk.rectangle(
+                            (sum(r[0][:2]) - self.coupler_gap, sum(r[1][:3]) - y_inset - self.coupler_width),
+                            (
+                                legc,
+                                sum(r[1][:3]) - y_inset - 2 * self.coupler_width,
+                            ),
+                            *self.coupler_layer,
+                        ),
+                        gdstk.rectangle(
+                            (sum(r[0][:2]) - self.coupler_gap + self.coupler_width, sum(r[1][:2]) + self.coupler_gap),
+                            (
+                                sum(r[0][:2]) - self.coupler_gap,
+                                legd,
+                            ),
+                            *self.coupler_layer,
+                        ),
+                    ]
+                )
             if self.extended_coupler_pullback and coupler_tunable < 0.5:
                 xstop = remap(
                     coupler_tunable,
@@ -936,8 +967,8 @@ class BoxConfig(GeomConfigMarker):
                                 sum(r[0][:1]) - self.feedline.c,
                                 sum(r[1][:3]) - self.coupler_gap * 2 - self.coupler_width,
                             ),
-                            (xstop + 0.5, sum(r[1][:3])),
-                            *self.coupler_layer
+                            (xstop, sum(r[1][:3])),
+                            *self.coupler_layer,
                         )
                     )
             c.add(*coupler_legs)
