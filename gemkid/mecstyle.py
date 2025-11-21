@@ -227,10 +227,7 @@ class InductorDoubledConfig(GeomConfigMarker):
     def focus_point(self):
         return (
             self.leg_length / 2 + 2 * self.wiring_width + 2 * self.wiring_gap + self.wiring_extra,
-            self.wiring_gap
-            + self.wiring_extra_height
-            + self.legs * (self.leg_gap + self.leg_width)
-            - self.leg_gap / 2,
+            (self.dimensions[1] - self.wiring_extra_height - self.wiring_gap) / 2,
         )
 
     @property
