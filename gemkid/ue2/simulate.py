@@ -19,7 +19,7 @@ from ..ue1.layers import drawing_to_sonnet, drawing_to_sonnet_3d
 
 
 @dataclass(frozen=True, eq=True)
-class UE2Testbench(simulate.LeftFeedlineTestbench):
+class UE2TestBench(simulate.LeftFeedlineTestbench):
     delta: float = 0.5
     backside_gold: bool = False
 
@@ -68,7 +68,7 @@ class UE23DTestBench(simulate.LeftFeedlineTestbench):
 
     @property
     def _filename(self):
-        return "3D" + super()._filename
+        return "UE23D" + super()._filename
 
     @property
     def _layer_stack(self) -> list[simulate.SonnetLayer]:
@@ -101,7 +101,7 @@ class UE2CMD(GeMKIDCMD):
     def _testbench_from_cell(self, cell, geometry, ns) -> simulate.TestbenchABC:
         if "3d" in ns.__dict__.keys():
             return UE23DTestBench(cell, geometry.feedline)
-        return UE2Testbench(cell, geometry.feedline)
+        return UE2TestBench(cell, geometry.feedline)
 
 
 if __name__ == "__main__":
