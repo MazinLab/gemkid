@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
 from ..ue1.layers import (
-    HF_GP_SONNET,
+    HF_GP_LL_SONNET,
     HF_LL_SONNET,
     HF_VAR_SONNET,
     TI_GOLD_SONNET,
-    HF_GP_SONNET_3D,
+    HF_GP_LL_SONNET_3D,
     HF_LL_SONNET_3D,
     HF_VAR_SONNET_3D,
     HF_VIA_SONNET_3D,
@@ -18,7 +18,7 @@ class UE2LLSLTestBench(simulate.UE2TestBench):
 
     @property
     def _layer_stack(self) -> list[simulate.simulate.SonnetLayer]:
-        return [HF_GP_SONNET, HF_LL_SONNET, HF_VAR_SONNET, TI_GOLD_SONNET]
+        return [HF_GP_LL_SONNET, HF_LL_SONNET, HF_VAR_SONNET, TI_GOLD_SONNET]
 
     @property
     def _filename(self):
@@ -28,7 +28,7 @@ class UE2LLSLTestBench(simulate.UE2TestBench):
 class UE2LLSL3DTestBench(simulate.UE23DTestBench):
     @property
     def _layer_stack(self) -> list[simulate.simulate.SonnetLayer]:
-        return [HF_GP_SONNET_3D, HF_LL_SONNET_3D, HF_VAR_SONNET_3D, HF_VIA_SONNET_3D, TI_GOLD_SONNET_3D]
+        return [HF_GP_LL_SONNET_3D, HF_LL_SONNET_3D, HF_VAR_SONNET_3D, HF_VIA_SONNET_3D, TI_GOLD_SONNET_3D]
 
     @property
     def _filename(self):
