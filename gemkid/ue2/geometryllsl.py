@@ -55,8 +55,8 @@ class InductorConfig(geometry.InductorConfig):
 
 @dataclass(eq=True, frozen=True)
 class CapacitorConfig(geometry.CapacitorConfig):
-    legs: int = 60
-    leg_gap: float = 1
+    legs: int = 40
+    leg_gap: float = 2
     leg_length: tuple[float, float] = (350 - 24, 200 - 24)
     leg_width: float = 1
     leg_landing: float = 0.0
