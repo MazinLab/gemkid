@@ -12,9 +12,9 @@ from . import array
 
 @dataclass(eq=True, frozen=True)
 class UEFeedlineConfig(geometry.UEFeedlineConfig):
-    a: float = 50
-    b: float = 2
-    c: float = 16
+    a: float = 37
+    b: float = 1
+    c: float = 30
     feed_layer: tuple[int, int] | DrawingLayer = HF_GP_LL
     ground_layer: tuple[int, int] | DrawingLayer = HF_GP_LL
 
