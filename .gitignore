@@ -1,4 +1,5 @@
 Gen2_Code/
+.pdm-python
 *.gds
 *.bmp
 *.dxf
