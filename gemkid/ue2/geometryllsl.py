@@ -69,7 +69,7 @@ class CapacitorConfig(geometry.CapacitorConfig):
 class BoxConfig(geometry.BoxConfig):
   inductor: Optional[InductorConfig]
   capacitor: Optional[CapacitorConfig]
-  feedline: geometry.UEFeedlineConfig = geometry.UEFeedlineConfig(feed_layer=HF_GP_LL, ground_layer=HF_GP_LL)
+  feedline: UEFeedlineConfig = UEFeedlineConfig(feed_layer=HF_GP_LL, ground_layer=HF_GP_LL)
   coupler_width: float = 2.0
   coupler_gap: float = 4.0
   coupler_fill: bool = False

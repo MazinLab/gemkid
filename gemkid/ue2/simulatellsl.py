@@ -1,5 +1,3 @@
-import gdstk
-
 from dataclasses import dataclass
 
 from ..ue1.layers import (
@@ -43,7 +41,7 @@ class UE2LLSLCMD(simulate.GeMKIDCMD):
         return UE2LLSLTestBench(cell, geometry.feedline)
 
 if __name__ == "__main__":
-    from .geometryll import BoxConfig
+    from .geometryllsl import BoxConfig
 
     import argparse
     import logging
