@@ -12,7 +12,7 @@ from . import array
 
 @dataclass(eq=True, frozen=True)
 class ViaWire(geometry.ViaWire):
-    # bridge_width: float = 4
+    bridge_width: float = 4
     bridge_layer: tuple[int, int] | DrawingLayer = HF_LL
     bridge_land: bool = True
     landing_width: float = 4
@@ -46,9 +46,21 @@ class InductorConfig(geometry.InductorConfig):
     litho_vias: Optional[int] = 2
 
 @dataclass(eq=True, frozen=True)
+class CapacitorConfig(geometry.CapacitorConfig):
+    legs: int = 66
+    leg_gap: float = 1
+    leg_length: tuple[float, float] = (222 - 33 + 212, 220)
+    leg_width: float = 1
+    leg_landing: float = 0.0
+    leg_layer: DrawingLayer = ATA_NB
+    wiring_width: float = 4.0
+    wiring_layer: DrawingLayer = ATA_NB
+    extra_height: float = 0.0
+
+@dataclass(eq=True, frozen=True)
 class BoxConfig(geometry.BoxConfig):
   inductor: Optional[InductorConfig]
-  capacitor: Optional[geometry.CapacitorConfig]
+  capacitor: Optional[CapacitorConfig]
   feedline: geometry.UEFeedlineConfig = geometry.UEFeedlineConfig(feed_layer=ATA_NB, ground_layer=ATA_NB)
   coupler_width: float = 2.0
   coupler_gap: float = 4.0
@@ -80,13 +92,13 @@ if __name__ == "__main__":
     for i in range(4):
         b = BoxConfig(
             InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1]),
-            geometry.CapacitorConfig(),
+            CapacitorConfig(),
             geometry.UEFeedlineConfig(),
         )
 
         bhqc = BoxConfig(
             InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1]),
-            geometry.CapacitorConfig(),
+            CapacitorConfig(),
             geometry.UEFeedlineConfig(),
             double_coupler=False,
             extended_coupler_pullback=True,
