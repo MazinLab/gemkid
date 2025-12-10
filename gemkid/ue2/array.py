@@ -86,7 +86,7 @@ class Vernier:
         return [p.rotate(rotation).translate(point) for p in rects]
 
 
-def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayname="", flmult=22):
+def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viawire, arrayname="", flmult=22):
     b = boxconfig
 
     top = gdstk.Cell(f"tm4-array-{arrayname}-v{variant:d}")
@@ -95,16 +95,9 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
     np.random.seed(42)
     np.random.shuffle(shuffler)
 
-    freqs = []
-    for n in [
-        np.linspace(4, 4.36, 6, endpoint=False),
-        np.linspace(5, 5.8, 8, endpoint=False),
-        np.linspace(6.0, 7.1, 10, endpoint=False),
-        np.linspace(8 - 0.6, 8, 12, endpoint=False),
-    ]:
-        freqs.extend(list(n))
+    freqs = list(resonators.keys())
     freqs = np.array(freqs)[shuffler].reshape((6, 6))
-
+ 
     COLUMN_PAD = 444
     STUB_HEIGHT = 444
     flstub = feedlineconfig().draw(STUB_HEIGHT, ports=([], []), cellcache={})
@@ -129,8 +122,8 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
     text_origin = (222 * -12, 222 * -10)
     for i, x in enumerate(range(-COLS // 4 + 1, COLS // 4 + 1)):
         for j, y in enumerate(range(-ROWS // 2, ROWS // 2)):
-            left = b.draw(cellcache={})
-            right = b.draw(cellcache={})
+            left = b.draw(**(resonators[freqs[i * 2][j]]), cellcache={})
+            right = b.draw(**(resonators[freqs[i * 2 + 1][j]]), cellcache={})
             left.name = f"left-r{j}c{i}-v{variant}"
             right.name = f"right-r{j}c{i}-v{variant}"
             if y != -ROWS // 4 - 1:
@@ -428,6 +421,152 @@ if __name__ == "__main__":
         (3, 10),
         (3, 21.5),
     ]
+    resonators = {
+        4.0: {
+            "coupler_tunable": 0.7142857142857142,
+            "capacitor_tunable": 0.952755905511811,
+        },
+        4.06: {
+            "coupler_tunable": 0.6825396825396826,
+            "capacitor_tunable": 0.9133858267716535,
+        },
+        4.12: {
+            "coupler_tunable": 0.6507936507936507,
+            "capacitor_tunable": 0.8818897637795275,
+        },
+        4.18: {
+            "coupler_tunable": 0.6190476190476191,
+            "capacitor_tunable": 0.84251968503937,
+        },
+        4.24: {
+            "coupler_tunable": 0.5873015873015872,
+            "capacitor_tunable": 0.8110236220472441,
+        },
+        4.3: {
+            "coupler_tunable": 0.5396825396825397,
+            "capacitor_tunable": 0.7874015748031495,
+        },
+        5.0: {
+            "coupler_tunable": 0.5396825396825397,
+            "capacitor_tunable": 0.49606299212598426,
+        },
+        5.1: {
+            "coupler_tunable": 0.4603174603174603,
+            "capacitor_tunable": 0.4645669291338583,
+        },
+        5.2: {
+            "coupler_tunable": 0.3968253968253968,
+            "capacitor_tunable": 0.4251968503937008,
+        },
+        5.3: {
+            "coupler_tunable": 0.3492063492063492,
+            "capacitor_tunable": 0.39370078740157477,
+        },
+        5.4: {
+            "coupler_tunable": 0.2857142857142857,
+            "capacitor_tunable": 0.36220472440944884,
+        },
+        5.5: {
+            "coupler_tunable": 0.2222222222222222,
+            "capacitor_tunable": 0.3307086614173228,
+        },
+        5.6: {
+            "coupler_tunable": 0.15873015873015872,
+            "capacitor_tunable": 0.2992125984251969,
+        },
+        5.7: {
+            "coupler_tunable": 0.047619047619047616,
+            "capacitor_tunable": 0.26771653543307083,
+        },
+        6.0: {
+            "coupler_tunable": 0.0,
+            "capacitor_tunable": 0.25984251968503935,
+        },
+        6.11: {
+            "coupler_tunable": 0.015873015873015872,
+            "capacitor_tunable": 0.18110236220472442,
+        },
+        6.22: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.1653543307086614,
+        },
+        6.33: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.14960629921259844,
+        },
+        6.44: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.13385826771653542,
+        },
+        6.55: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.12598425196850394,
+        },
+        6.66: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.11023622047244094,
+        },
+        6.7700000000000005: {
+            "coupler_tunable": 0.047619047619047616,
+            "capacitor_tunable": 0.09448818897637795,
+        },
+        6.88: {
+            "coupler_tunable": 0.047619047619047616,
+            "capacitor_tunable": 0.08661417322834646,
+        },
+        6.99: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.07086614173228346,
+        },
+        7.4: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.03937007874015748,
+        },
+        7.45: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.031496062992125984,
+        },
+        7.5: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.031496062992125984,
+        },
+        7.550000000000001: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.023622047244094488,
+        },
+        7.6000000000000005: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.023622047244094488,
+        },
+        7.65: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.023622047244094488,
+        },
+        7.7: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.015748031496062992,
+        },
+        7.75: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.015748031496062992,
+        },
+        7.8: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.007874015748031496,
+        },
+        7.8500000000000005: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.007874015748031496,
+        },
+        7.9: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.007874015748031496,
+        },
+        7.95: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.0,
+        },
+    }
 
     lib = gdstk.Library("ue2-ucsb-array")
 
@@ -437,5 +576,5 @@ if __name__ == "__main__":
             CapacitorConfig(),
             UEFeedlineConfig(),
         )
-        make_array_variant(lib, i, b, UEFeedlineConfig, ViaWire, "ucsb-8ph")
+        make_array_variant(lib, i, resonators, b, UEFeedlineConfig, ViaWire, "ucsb-8ph")
     lib.write_gds("ue2-ucsb-array.gds")

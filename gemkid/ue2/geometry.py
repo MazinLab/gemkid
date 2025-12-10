@@ -408,31 +408,22 @@ class BoxConfig(mecstyle.BoxConfig):
     double_coupler: bool = True
 
 
-
-def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawire, dietext, variants, arrayname="", flmult=33):
+def make_tm_variant(
+    lib,
+    variant,
+    resonators,
+    boxconfig,
+    boxconfighqc,
+    feedlineconfig,
+    viawire,
+    dietext,
+    variants,
+    arrayname="",
+    flmult=33,
+):
     top = gdstk.Cell(f"tm4-tm-{arrayname}-v{variant:d}")
     b = boxconfig
     bhqc = boxconfighqc
-
-
-    resonators = {
-        4.000: [0.00000000, 0.00000000, False],
-        4.050: [0.25000000, 0.25000000, False],
-        4.100: [0.50000000, 0.50000000, False],
-        4.150: [0.75000000, 0.75000000, False],
-        4.200: [1.00000000, 1.00000000, False],
-        4.250: [0.59047749, 0.87068039, False],
-        4.300: [0.57542503, 0.85091611, False],
-        6.100: [0.00000000, 0.56968497, True],
-        6.200: [0.00000000, 0.54446415, True],
-        6.300: [0.00000000, 0.51906441, True],
-        6.400: [0.00000000, 0.49533190, True],
-        7.500: [0.04770690, 0.27341094, False],
-        7.625: [0.04790251, 0.27274127, False],
-        7.750: [0.68063283, 0.22559828, False],
-        7.875: [0.62439931, 0.21121744, False],
-        8.000: [0.56386937, 0.19899498, False],
-    }
 
     np.random.seed(42)
     ks = list(resonators.keys())
@@ -440,9 +431,9 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
     np.random.shuffle(index)
 
     freq_func = lambda i: ks[index[i]]
-    coup_func = lambda i: resonators[freq_func(i)][0]
-    cap_func = lambda i: resonators[freq_func(i)][1]
-    hqc_func = lambda i: resonators[freq_func(i)][2]
+    coup_func = lambda i: resonators[freq_func(i)]["coupler_tunable"]
+    cap_func = lambda i: resonators[freq_func(i)]["capacitor_tunable"]
+    hqc_func = lambda i: freq_func(i) < 7.0 and freq_func(i) >= 6.0
 
     flstub = feedlineconfig().draw(222, ports=([], []), cellcache={})
     flstubmini = feedlineconfig().draw(170, ports=([], []), cellcache={})
@@ -461,9 +452,7 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
 
     for i in range(8):
         if not hqc_func(i * 2):
-            left = b.draw(
-                capacitor_tunable=cap_func(i * 2), coupler_tunable=coup_func(i * 2), cellcache={}
-            )
+            left = b.draw(capacitor_tunable=cap_func(i * 2), coupler_tunable=coup_func(i * 2), cellcache={})
         else:
             left = bhqc.draw(
                 capacitor_tunable=cap_func(i * 2), coupler_tunable=coup_func(i * 2), cellcache={}
@@ -617,17 +606,7 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
                                 2700 // 2 - 2 + j * 6,
                             ),
                             (
-                                -2700
-                                + 150
-                                + 150
-                                + 200
-                                + 8
-                                + sum(LS[:i])
-                                + i * 32
-                                + 32
-                                + LS[i]
-                                + 1.5
-                                - inset,
+                                -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 + LS[i] + 1.5 - inset,
                                 2700 // 2 + 2 + j * 6,
                             ),
                         ),
@@ -668,18 +647,7 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
                         2700 // 2 - 14,
                     ),
                     (
-                        -2700
-                        + 150
-                        + 150
-                        + 200
-                        + 8
-                        + sum(LS[:i])
-                        + i * 32
-                        + 32
-                        + LS[i]
-                        + 1.5
-                        - inset
-                        - 1.5,
+                        -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 + LS[i] + 1.5 - inset - 1.5,
                         2700 // 2 + 14,
                     ),
                     *viawire().asi_ep_layer,
@@ -836,13 +804,25 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
         )
 
     rect_right = gdstk.boolean(
-        rect_right, milo, "or", layer=boxconfig.box_layer.gds_layer[0], datatype=boxconfig.box_layer.gds_layer[1]
+        rect_right,
+        milo,
+        "or",
+        layer=boxconfig.box_layer.gds_layer[0],
+        datatype=boxconfig.box_layer.gds_layer[1],
     )
     rect_left = gdstk.boolean(
-        rect_left, rect_left, "or", layer=boxconfig.box_layer.gds_layer[0], datatype=boxconfig.box_layer.gds_layer[1]
+        rect_left,
+        rect_left,
+        "or",
+        layer=boxconfig.box_layer.gds_layer[0],
+        datatype=boxconfig.box_layer.gds_layer[1],
     )
 
-    top.add(*gdstk.boolean(tlm, tlm, "or", layer=boxconfig.box_layer.gds_layer[0], datatype=boxconfig.box_layer.gds_layer[1]))
+    top.add(
+        *gdstk.boolean(
+            tlm, tlm, "or", layer=boxconfig.box_layer.gds_layer[0], datatype=boxconfig.box_layer.gds_layer[1]
+        )
+    )
 
     top.add(gdstk.Reference(flstubmini, origin=(0, 3500 - 170)))
     top.add(*rect_right, *rect_left)
@@ -883,18 +863,14 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
         yposh = i * 11.1 * 2
         ps.extend(via.draw_polys((-XOVER_LENGTH / 2, yposh), (+XOVER_LENGTH / 2, yposh)))
     j = 0
-    while j*6 + 2 < feedlineconfig().a + feedlineconfig().b:
+    while j * 6 + 2 < feedlineconfig().a + feedlineconfig().b:
         ps.append(gdstk.rectangle((j * 6 - 2, 0), (j * 6 + 2, yposh), *via.bridge_layer))
         ps.append(gdstk.rectangle((-j * 6 - 2, 0), (-j * 6 + 2, yposh), *via.bridge_layer))
         j += 1
     c = XOVER_LENGTH / 2 - via.landing_length / 2
     for i in range(0, 16):
-        ps.append(
-            gdstk.rectangle((-c - 2.5, 0 + 222 * i), (-c + 2.5, 200 + 222 * i), *via.liftoff_layer)
-        )
-        ps.append(
-            gdstk.rectangle((+c + 2.5, 0 + 222 * i), (+c - 2.5, 200 + 222 * i), *via.liftoff_layer)
-        )
+        ps.append(gdstk.rectangle((-c - 2.5, 0 + 222 * i), (-c + 2.5, 200 + 222 * i), *via.liftoff_layer))
+        ps.append(gdstk.rectangle((+c + 2.5, 0 + 222 * i), (+c - 2.5, 200 + 222 * i), *via.liftoff_layer))
     xovers.add(*unionize(ps, *viawire().bridge_layer))
     xovers.add(*unionize(ps, *viawire().via_layer))
     xovers.add(*unionize(ps, *viawire().liftoff_layer))
@@ -939,6 +915,7 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
     lib.add(endcap)
     return top
 
+
 if __name__ == "__main__":
     import numpy as np
 
@@ -948,6 +925,72 @@ if __name__ == "__main__":
         (3, 10),
         (3, 21.5),
     ]
+    resonators = {
+        4.0: {
+            "coupler_tunable": 0.7142857142857142,
+            "capacitor_tunable": 0.952755905511811,
+        },
+        4.05: {
+            "coupler_tunable": 0.6825396825396826,
+            "capacitor_tunable": 0.9212598425196851,
+        },
+        4.1: {
+            "coupler_tunable": 0.6507936507936507,
+            "capacitor_tunable": 0.889763779527559,
+        },
+        4.15: {
+            "coupler_tunable": 0.6349206349206349,
+            "capacitor_tunable": 0.8582677165354331,
+        },
+        4.2: {
+            "coupler_tunable": 0.6031746031746031,
+            "capacitor_tunable": 0.8346456692913385,
+        },
+        4.25: {
+            "coupler_tunable": 0.5714285714285714,
+            "capacitor_tunable": 0.8110236220472441,
+        },
+        4.3: {
+            "coupler_tunable": 0.5396825396825397,
+            "capacitor_tunable": 0.7874015748031495,
+        },
+        6.1: {
+            "coupler_tunable": 0.0,
+            "capacitor_tunable": 0.25984251968503935,
+        },
+        6.2: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.1732283464566929,
+        },
+        6.3: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.15748031496062992,
+        },
+        6.4: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.14173228346456693,
+        },
+        7.5: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.031496062992125984,
+        },
+        7.625: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.023622047244094488,
+        },
+        7.75: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.015748031496062992,
+        },
+        7.875: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.007874015748031496,
+        },
+        8.0: {
+            "coupler_tunable": 0.031746031746031744,
+            "capacitor_tunable": 0.0,
+        },
+    }
 
     lib = gdstk.Library("ue2-ucsb-tm")
 
@@ -965,7 +1008,9 @@ if __name__ == "__main__":
             double_coupler=False,
             extended_coupler_pullback=True,
         )
-        make_tm_variant(lib, i, b, bhqc, UEFeedlineConfig, ViaWire, "UE2 UCSB 8pH", variants, "ucsb-8ph")
+        make_tm_variant(
+            lib, i, resonators, b, bhqc, UEFeedlineConfig, ViaWire, "UE2 UCSB 8pH", variants, "ucsb-8ph"
+        )
 
     # tile = gdstk.Cell("tile")
     # tile.add(gdstk.Reference(vs[0], (0 - 3000 - 100, 950 - 5400 / 2 + 3000 + 100)))
