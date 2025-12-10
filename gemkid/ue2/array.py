@@ -1,7 +1,7 @@
 import gdstk
 
 from .geometry import *
-from ..ue1.layers import ATA_NB, HF, HF_CONTACT, HF_CONTACT_LIFTOFF, ASI, ASI_EP, MLA_MARK, MLA_PITCH
+from ..ue1.layers import ATA_NB, HF_CONTACT, HF_CONTACT_LIFTOFF, ASI, ASI_EP, MLA_MARK, MLA_PITCH
 
 
 @dataclass(eq=True, frozen=True)
@@ -14,6 +14,7 @@ class Vernier:
     center_stub: float = 4
     lower_layer: tuple[int, int] | DrawingLayer = ATA_NB
     upper_layer: tuple[int, int] | DrawingLayer = MLA_MARK
+    tiebar: bool = True
 
     def draw_polys(self, point: tuple[float, float], rotation: float = 0.0):
         rects = []
@@ -32,6 +33,21 @@ class Vernier:
                 *self.upper_layer,
             ),
         )
+        if self.tiebar:
+            rects.append(
+                gdstk.rectangle(
+                    (self.vernier_length - self.vernier_width, self.vernier_count * (self.vernier_spacing)),
+                    (self.vernier_length, -self.vernier_count * (self.vernier_spacing)),
+                    *self.lower_layer,
+                )
+            )
+            rects.append(
+                gdstk.rectangle(
+                    (-self.vernier_length + self.vernier_width, self.vernier_count * (self.vernier_spacing + self.vernier_delta)),
+                    (-self.vernier_length, -self.vernier_count * (self.vernier_spacing + self.vernier_delta)),
+                    *self.upper_layer,
+                )
+            )
         for d in range(1, self.vernier_count + 1):
             rects.append(
                 gdstk.rectangle(
@@ -70,8 +86,7 @@ class Vernier:
         return [p.rotate(rotation).translate(point) for p in rects]
 
 
-
-def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayname=""):
+def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayname="", flmult=22):
     b = boxconfig
 
     top = gdstk.Cell(f"tm4-array-{arrayname}-v{variant:d}")
@@ -104,7 +119,7 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
         gdstk.cross((+b.focus_point[0], b.focus_point[1] + 222), 32, 4),
         gdstk.cross((-b.focus_point[0], b.focus_point[1] + 222), 32, 4),
     ]
-    flstub.add(*gdstk.boolean(rects, crosses, "not", 0.0001, *ATA_NB))
+    flstub.add(*gdstk.boolean(rects, crosses, "not", 0.0001, *b.box_layer))
 
     lib.add(flstub)
 
@@ -155,7 +170,6 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
                     32,
                     (4 * 64 * i + text_origin[0], j * 128 + text_origin[1]),
                     False,
-                    *HF,
                 )
             )
     for x in range(-7, 8):
@@ -174,7 +188,7 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
         for y in range(0, int(min(-ARRAY_BOTTOM, ARRAY_TOP)), 222):
             crosses.append(gdstk.cross((xll + 222, y), 32, 4))
             crosses.append(gdstk.cross((xll + 222, -y - 222), 32, 4))
-        top.add(*gdstk.boolean(rect, crosses, "not", 0.0001, *ATA_NB))
+        top.add(*gdstk.boolean(rect, crosses, "not", 0.0001, *b.box_layer))
 
     ARRAY_LEFT = -444 * COLS // 2 - (COLS - 3) // 2 * COLUMN_PAD
     ARRAY_RIGHT = +444 * COLS // 2 + (COLS - 3) // 2 * COLUMN_PAD
@@ -213,10 +227,10 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
     ARRAY_WIRED_BOTTOM = ARRAY_BOTTOM - CURVATURE_RADIUS * 2 - SPACING
     ARRAY_WIRED_TOP = ARRAY_TOP + CURVATURE_RADIUS * 2 + SPACING
     rect = gdstk.rectangle((ARRAY_LEFT, ARRAY_WIRED_BOTTOM), (ARRAY_RIGHT, ARRAY_BOTTOM))
-    wiring.add(*gdstk.boolean(rect, paths, "not", 0.0001, *ATA_NB))
+    wiring.add(*gdstk.boolean(rect, paths, "not", 0.0001, *b.box_layer))
 
     capping = gdstk.Cell(f"Bond Cap-v{variant:d}")
-    m = 22
+    m = flmult
     f = feedlineconfig()
     CAPPING_HEIGHT = 450
     HEIGHT = 750
@@ -237,7 +251,7 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
             (-(f.a) * m, stop),
             (-(f.a), HEIGHT),
         ],
-        *ATA_NB,
+        *b.box_layer,
     ).translate((0, -5600 // 2 - HEIGHT + CAPPING_HEIGHT))
     rect = gdstk.rectangle((ARRAY_LEFT, -5600 // 2), (ARRAY_RIGHT, -5600 // 2 + CAPPING_HEIGHT))
     for i in range(-3, 3 + 1):
@@ -250,10 +264,10 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
                 datatype=SOLDER_MASK.gds_layer[1],
             )
         )
-    capping.add(*gdstk.boolean(rect, outline, "not", 0.0001, *ATA_NB))
+    capping.add(*gdstk.boolean(rect, outline, "not", 0.0001, *b.box_layer))
 
     top.add(gdstk.Reference(wiring))
-    top.add(gdstk.Reference(wiring, rotation=np.pi, origin=(0, b.focus_point[1] * 4 - STUB_HEIGHT // 2)))
+    top.add(gdstk.Reference(wiring, rotation=np.pi, origin=(0, -b.focus_point[1] * 2)))
     top.add(gdstk.Reference(capping))
     top.add(gdstk.Reference(capping, rotation=np.pi))
 
@@ -267,7 +281,7 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
         ],
     )
     p.vertical(ARRAY_WIRED_BOTTOM)
-    top.add(*gdstk.boolean(prect, p, "not", 0.0001, *ATA_NB))
+    top.add(*gdstk.boolean(prect, p, "not", 0.0001, *b.box_layer))
 
     prect = gdstk.rectangle((ARRAY_LEFT, +5600 // 2 - CAPPING_HEIGHT), (ARRAY_RIGHT, ARRAY_WIRED_TOP))
     p = gdstk.RobustPath(
@@ -279,24 +293,25 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
         ],
     )
     p.vertical(ARRAY_WIRED_TOP)
-    top.add(*gdstk.boolean(prect, p, "not", 0.0001, *ATA_NB))
+    top.add(*gdstk.boolean(prect, p, "not", 0.0001, *b.box_layer))
 
     via = viawire()
     xovers = gdstk.Cell(f"crossovers-v{variant:d}")
-    XOVER_LENGTH = 56
+    XOVER_LENGTH = 2 * (feedlineconfig().a + feedlineconfig().b + via.landing_length + 1)
+    XOVER_LENGTH_COUPLER = 56
     for y in range(-ROWS // 2, ROWS // 2):
         yposh = y * 222 + y * STUB_HEIGHT - b.focus_point[1] + 222
         yposv = yposh + b.height - b.box_width - b.coupler_gap - b.coupler_width / 2
         xovers.add(
             *via.draw_polys(
-                (-f.a - f.b - f.c / 2, -XOVER_LENGTH / 2 + yposv),
-                (-f.a - f.b - f.c / 2, +XOVER_LENGTH / 2 + yposv),
+                (-f.a - f.b - f.c / 2, -XOVER_LENGTH_COUPLER / 2 + yposv),
+                (-f.a - f.b - f.c / 2, +XOVER_LENGTH_COUPLER / 2 + yposv),
             )
         )
         xovers.add(
             *via.draw_polys(
-                (+f.a + f.b + f.c / 2, -XOVER_LENGTH / 2 + yposv),
-                (+f.a + f.b + f.c / 2, +XOVER_LENGTH / 2 + yposv),
+                (+f.a + f.b + f.c / 2, -XOVER_LENGTH_COUPLER / 2 + yposv),
+                (+f.a + f.b + f.c / 2, +XOVER_LENGTH_COUPLER / 2 + yposv),
             )
         )
         xovers.add(*via.draw_polys((-XOVER_LENGTH / 2, yposh), (+XOVER_LENGTH / 2, yposh)))
@@ -339,15 +354,15 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
     crosses = []
     for x in [222 * 12, -222 * 12]:
         for y in [222 * 12, -222 * 12]:
-            crosses.extend(Vernier().draw_polys((x + 111, y), 0.0))
-            crosses.extend(Vernier().draw_polys((x - 111, y), np.pi))
-            crosses.extend(Vernier().draw_polys((x, y + 111), np.pi / 2))
-            crosses.extend(Vernier().draw_polys((x, y - 111), -np.pi / 2))
-            crosses.append(gdstk.cross((x, y), 75, 20, *ATA_NB))
+            crosses.extend(Vernier(lower_layer=b.box_layer).draw_polys((x + 111, y), 0.0))
+            crosses.extend(Vernier(lower_layer=b.box_layer).draw_polys((x - 111, y), np.pi))
+            crosses.extend(Vernier(lower_layer=b.box_layer).draw_polys((x, y + 111), np.pi / 2))
+            crosses.extend(Vernier(lower_layer=b.box_layer).draw_polys((x, y - 111), -np.pi / 2))
+            crosses.append(gdstk.cross((x, y), 75, 20, *b.box_layer))
             crosses.append(gdstk.cross((x, y), 72, 18, *MLA_MARK))
 
     crosses_atanb = [
-        c for c in crosses if c.layer == ATA_NB.gds_layer[0] and c.datatype == ATA_NB.gds_layer[1]
+        c for c in crosses if c.layer == b.box_layer.gds_layer[0] and c.datatype == b.box_layer.gds_layer[1]
     ]
     crosses_mark = [
         c for c in crosses if c.layer == MLA_MARK.gds_layer[0] and c.datatype == MLA_MARK.gds_layer[1]
@@ -359,28 +374,26 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
 
     AP = 2850
     for x, y in [(-AP, -AP), (-AP, AP), (AP, AP), (AP, -AP)]:
-        top.add(gdstk.cross((x, y), 100, 20, *ATA_NB))
-        top.add(gdstk.cross((x, y), 100, 20, *HF))
+        top.add(gdstk.cross((x, y), 100, 20, *b.box_layer))
+        top.add(gdstk.cross((x, y), 100, 20, *b.inductor.leg_layer))
         top.add(gdstk.rectangle((x - 50, y - 50), (x + 50, y + 50), *HF_CONTACT))
 
     for rot in [0, np.pi / 2, np.pi, 3 * np.pi / 2]:
         vs = []
         for i, pair in enumerate(
             [
-                (ATA_NB, HF),
-                (ATA_NB, HF_CONTACT),
-                (ATA_NB, HF_CONTACT_LIFTOFF),
-                (ATA_NB, ASI),
-                (ATA_NB, ASI_EP),
+                (b.box_layer, b.inductor.leg_layer),
+                (b.box_layer, HF_CONTACT),
+                (b.box_layer, HF_CONTACT_LIFTOFF),
+                (b.box_layer, ASI),
+                (b.box_layer, ASI_EP),
             ]
         ):
-            vs.extend(
-                Vernier(lower_layer=pair[0], upper_layer=pair[1]).draw_polys((-AP + 100 + 50 * i, -AP))
-            )
+            vs.extend(Vernier(lower_layer=pair[0], upper_layer=pair[1]).draw_polys((-AP + 100 + 50 * i, -AP)))
         top.add(*[v.rotate(rot) for v in vs])
         top.add(*[v.copy().mirror((-1, -1), (1, 1)) for v in vs])
 
-    top.add(*gdstk.boolean(rects, crosses_atanb + text, "not", 0.0001, *ATA_NB))
+    top.add(*gdstk.boolean(rects, crosses_atanb + text, "not", 0.0001, *b.box_layer))
     top.add(*crosses_mark)
     top.add(
         gdstk.Polygon(
@@ -395,7 +408,8 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
                 (2925, 2925),
                 (-2925, 2925),
                 (-2925, -3000),
-            ]
+            ],
+            *b.box_layer,
         )
     )
     lib.add(xovers)
@@ -403,6 +417,7 @@ def make_array_variant(lib, variant, boxconfig, feedlineconfig, viawire, arrayna
     lib.add(wiring)
     lib.add(top)
     return top
+
 
 if __name__ == "__main__":
     import numpy as np

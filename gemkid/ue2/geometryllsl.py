@@ -109,7 +109,7 @@ if __name__ == "__main__":
             double_coupler=False,
             extended_coupler_pullback=True,
         )
-        geometry.make_tm_variant(lib, i, b, bhqc, UEFeedlineConfig, ViaWire, "UE2 LL SL 20pH", variants, "ll-sl-20ph")
-        array.make_array_variant(lib, i, b, UEFeedlineConfig, ViaWire, "ll-sl-20ph")
+        geometry.make_tm_variant(lib, i, b, bhqc, UEFeedlineConfig, ViaWire, "UE2 LLSL 20pH", variants, "ll-sl-20ph", 5)
+        array.make_array_variant(lib, i, b, UEFeedlineConfig, ViaWire, "ll-sl-20ph", 4)
 
     lib.write_gds("ue2-ll-sl.gds")

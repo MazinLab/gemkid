@@ -409,7 +409,7 @@ class BoxConfig(mecstyle.BoxConfig):
 
 
 
-def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawire, dietext, variants, arrayname=""):
+def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawire, dietext, variants, arrayname="", flmult=33):
     top = gdstk.Cell(f"tm4-tm-{arrayname}-v{variant:d}")
     b = boxconfig
     bhqc = boxconfighqc
@@ -531,7 +531,7 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
     endcap = gdstk.Cell("endcap{:d}".format(variant))
     ec = gdstk.rectangle((-2700, 0), (2700, 950), *boxconfig.box_layer)
     f = feedlineconfig()
-    m = 33
+    m = flmult
     outline = gdstk.Polygon(
         [
             (-(f.a + f.b), 1000),
@@ -556,7 +556,7 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
     outline = gdstk.boolean(ec, outline, "not")
     outline = gdstk.boolean(
         outline,
-        gdstk.text("8 pH/sq UCSB v{:d}".format(variant), 250, (-2500, 600)),
+        gdstk.text(dietext + " v{:d}".format(variant), 250, (-2500, 600)),
         "not",
         layer=boxconfig.box_layer.gds_layer[0],
         datatype=boxconfig.box_layer.gds_layer[1],
@@ -831,6 +831,7 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
             gdstk.rectangle(
                 (-2700 + 200 + 50, 2700 // 2 + max_extent + 64 + 33 + i * (16 + 165)),
                 (-2700 + 200 + 50 + 200, 2700 // 2 + max_extent + 64 + 33 + 165 + i * (16 + 165)),
+                *b.box_layer,
             )
         )
 
@@ -876,19 +877,23 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
     )
     via = viawire(via_length=5, landing_length=8, asi_width=22.2)
     xovers = gdstk.Cell(f"half_coax_crossovers{variant}")
-    XOVER_LENGTH = 36
+    XOVER_LENGTH = 2 * (feedlineconfig().a + feedlineconfig().b + via.landing_length + 1)
     ps = []
     for i in range(160):
         yposh = i * 11.1 * 2
         ps.extend(via.draw_polys((-XOVER_LENGTH / 2, yposh), (+XOVER_LENGTH / 2, yposh)))
-    for j in range(-1, 1 + 1):
-        ps.append(gdstk.rectangle((j * 6 - 2, 0), (j * 6 + 2, yposh), *viawire().bridge_layer))
+    j = 0
+    while j*6 + 2 < feedlineconfig().a + feedlineconfig().b:
+        ps.append(gdstk.rectangle((j * 6 - 2, 0), (j * 6 + 2, yposh), *via.bridge_layer))
+        ps.append(gdstk.rectangle((-j * 6 - 2, 0), (-j * 6 + 2, yposh), *via.bridge_layer))
+        j += 1
+    c = XOVER_LENGTH / 2 - via.landing_length / 2
     for i in range(0, 16):
         ps.append(
-            gdstk.rectangle((-14 - 2.5, 0 + 222 * i), (-14 + 2.5, 200 + 222 * i), *viawire().liftoff_layer)
+            gdstk.rectangle((-c - 2.5, 0 + 222 * i), (-c + 2.5, 200 + 222 * i), *via.liftoff_layer)
         )
         ps.append(
-            gdstk.rectangle((+14 + 2.5, 0 + 222 * i), (+14 - 2.5, 200 + 222 * i), *viawire().liftoff_layer)
+            gdstk.rectangle((+c + 2.5, 0 + 222 * i), (+c - 2.5, 200 + 222 * i), *via.liftoff_layer)
         )
     xovers.add(*unionize(ps, *viawire().bridge_layer))
     xovers.add(*unionize(ps, *viawire().via_layer))
@@ -897,6 +902,31 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
     xovers.add(*unionize(ps, *viawire().asi_layer))
     xovers.add(*unionize(ps, *viawire().asi_ep_layer))
     top.add(gdstk.Reference(xovers, (0, 0)))
+    lib.add(xovers)
+
+    via = viawire()
+    XOVER_LENGTH = 2 * (feedlineconfig().a + feedlineconfig().b + via.landing_length + 1)
+    XOVER_LENGTH_COUPLER = 56
+    xovers = gdstk.Cell(f"crossovers{variant}")
+    for y in range(0, 16, 2):
+        yposh = y * 222
+        yposv = yposh + b.height - b.box_width - b.coupler_gap - b.coupler_width / 2
+        xovers.add(
+            *via.draw_polys(
+                (-f.a - f.b - f.c / 2, -XOVER_LENGTH_COUPLER / 2 + yposv),
+                (-f.a - f.b - f.c / 2, +XOVER_LENGTH_COUPLER / 2 + yposv),
+            )
+        )
+        xovers.add(
+            *via.draw_polys(
+                (+f.a + f.b + f.c / 2, -XOVER_LENGTH_COUPLER / 2 + yposv),
+                (+f.a + f.b + f.c / 2, +XOVER_LENGTH_COUPLER / 2 + yposv),
+            )
+        )
+        xovers.add(*via.draw_polys((-XOVER_LENGTH / 2, yposh), (+XOVER_LENGTH / 2, yposh)))
+        xovers.add(*via.draw_polys((-XOVER_LENGTH / 2, yposh), (+XOVER_LENGTH / 2, yposh)))
+    top.add(gdstk.Reference(xovers, (0, 0)))
+    lib.add(xovers)
 
     top.add(*gdstk.boolean(gold, gold, "or", layer=100))
 
@@ -907,7 +937,6 @@ def make_tm_variant(lib, variant, boxconfig, boxconfighqc, feedlineconfig, viawi
     lib.add(top)
     lib.add(flstub, flstubmini)
     lib.add(endcap)
-    lib.add(xovers)
     return top
 
 if __name__ == "__main__":
