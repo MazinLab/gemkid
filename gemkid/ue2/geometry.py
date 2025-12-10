@@ -455,7 +455,7 @@ def make_tm_variant(
             left = b.draw(capacitor_tunable=cap_func(i * 2), coupler_tunable=coup_func(i * 2), cellcache={})
         else:
             left = bhqc.draw(
-                capacitor_tunable=cap_func(i * 2), coupler_tunable=coup_func(i * 2), cellcache={}
+                capacitor_tunable=cap_func(i * 2), coupler_tunable=0, cellcache={}
             )
         if not hqc_func(i * 2 + 1):
             right = b.draw(
@@ -463,7 +463,7 @@ def make_tm_variant(
             )
         else:
             right = bhqc.draw(
-                capacitor_tunable=cap_func(i * 2 + 1), coupler_tunable=coup_func(i * 2 + 1), cellcache={}
+                capacitor_tunable=cap_func(i * 2 + 1), coupler_tunable=0, cellcache={}
             )
         left.name = "left-wide-cap{}-coup{}-f{:.04f}-v{:d}".format(
             cap_func(i * 2), coup_func(i * 2), freq_func(i * 2), variant
