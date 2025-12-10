@@ -187,9 +187,11 @@ class SimOptimize(SimGeomABC, SimSweepABC):
             self.save_database(ns.database)
 
         freqs = np.linspace(self.ns.fstart, self.ns.fstop, self.ns.fcount, endpoint=True)
+        results = {}
         for freq in tqdm.tqdm(freqs):
-            self.optimize_freq(freq, self.ns.deltal, self.ns.target)
+            results[freq] = self.optimize_freq(freq, self.ns.deltal, self.ns.target)
             self.save_database(ns.database)
+        print("result =", results)
 
     def optimize_freq(self, freq, deltal, target, maxiter=32, x0=None):
         if maxiter == 0:
@@ -264,7 +266,7 @@ class SimOptimize(SimGeomABC, SimSweepABC):
                 )
         if fully_cached:
             log.info("FOUND SOLUTION WITH {:d} ITERATIONS REMAINING FOR f0={:.3f}".format(maxiter, freq))
-            return
+            return tunes
         return self.optimize_freq(freq, deltal, target, maxiter - 1, quantized_ll)
 
     def have_cached(self, tunables, deltal):
