@@ -86,7 +86,7 @@ class Vernier:
         return [p.rotate(rotation).translate(point) for p in rects]
 
 
-def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viawire, arrayname="", flmult=22):
+def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viawire, dietext, arrayname="", flmult=22):
     b = boxconfig
 
     top = gdstk.Cell(f"tm4-array-{arrayname}-v{variant:d}")
@@ -120,6 +120,14 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
     COLS = 6
     text = []
     text_origin = (222 * -12, 222 * -10)
+    text.extend(
+        gdstk.text(
+            f"{dietext} v{variant}",
+            72,
+            (text_origin[0], text_origin[1] - 128),
+            False,
+        )
+    )
     for i, x in enumerate(range(-COLS // 4 + 1, COLS // 4 + 1)):
         for j, y in enumerate(range(-ROWS // 2, ROWS // 2)):
             left = b.draw(**(resonators[freqs[i * 2][j]]), cellcache={})
@@ -576,5 +584,5 @@ if __name__ == "__main__":
             CapacitorConfig(),
             UEFeedlineConfig(),
         )
-        make_array_variant(lib, i, resonators, b, UEFeedlineConfig, ViaWire, "ucsb-8ph")
+        make_array_variant(lib, i, resonators, b, UEFeedlineConfig, ViaWire, "UE2 UCSB 8pH Array", "ucsb-8ph")
     lib.write_gds("ue2-ucsb-array.gds")

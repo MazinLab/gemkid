@@ -341,6 +341,8 @@ if __name__ == "__main__":
             "ll-sl-20ph",
             5,
         )
-        array.make_array_variant(lib, i, resonators_array, b, UEFeedlineConfig, ViaWire, "ll-sl-20ph", 4)
+        array.make_array_variant(
+            lib, i, resonators_array, b, UEFeedlineConfig, ViaWire, "UE2 LLSL 20pH Array", "ll-sl-20ph", 4
+        )
 
     lib.write_gds("ue2-ll-sl.gds")
