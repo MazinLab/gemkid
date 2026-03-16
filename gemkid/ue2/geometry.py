@@ -454,17 +454,13 @@ def make_tm_variant(
         if not hqc_func(i * 2):
             left = b.draw(capacitor_tunable=cap_func(i * 2), coupler_tunable=coup_func(i * 2), cellcache={})
         else:
-            left = bhqc.draw(
-                capacitor_tunable=cap_func(i * 2), coupler_tunable=0, cellcache={}
-            )
+            left = bhqc.draw(capacitor_tunable=cap_func(i * 2), coupler_tunable=0, cellcache={})
         if not hqc_func(i * 2 + 1):
             right = b.draw(
                 capacitor_tunable=cap_func(i * 2 + 1), coupler_tunable=coup_func(i * 2 + 1), cellcache={}
             )
         else:
-            right = bhqc.draw(
-                capacitor_tunable=cap_func(i * 2 + 1), coupler_tunable=0, cellcache={}
-            )
+            right = bhqc.draw(capacitor_tunable=cap_func(i * 2 + 1), coupler_tunable=0, cellcache={})
         left.name = "left-wide-cap{}-coup{}-f{:.04f}-v{:d}".format(
             cap_func(i * 2), coup_func(i * 2), freq_func(i * 2), variant
         )
@@ -543,9 +539,10 @@ def make_tm_variant(
         *boxconfig.box_layer,
     )
     outline = gdstk.boolean(ec, outline, "not")
+    outline = gdstk.boolean(outline, gdstk.rectangle((-2500, 200 + 24), (-1500, 200 + 24 + 112)), "not")
     outline = gdstk.boolean(
         outline,
-        gdstk.text(dietext + " v{:d}".format(variant), 250, (-2500, 600)),
+        gdstk.text(dietext, 250, (-2500, 600)),
         "not",
         layer=boxconfig.box_layer.gds_layer[0],
         datatype=boxconfig.box_layer.gds_layer[1],

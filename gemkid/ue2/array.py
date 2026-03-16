@@ -43,7 +43,10 @@ class Vernier:
             )
             rects.append(
                 gdstk.rectangle(
-                    (-self.vernier_length + self.vernier_width, self.vernier_count * (self.vernier_spacing + self.vernier_delta)),
+                    (
+                        -self.vernier_length + self.vernier_width,
+                        self.vernier_count * (self.vernier_spacing + self.vernier_delta),
+                    ),
                     (-self.vernier_length, -self.vernier_count * (self.vernier_spacing + self.vernier_delta)),
                     *self.upper_layer,
                 )
@@ -86,7 +89,9 @@ class Vernier:
         return [p.rotate(rotation).translate(point) for p in rects]
 
 
-def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viawire, dietext, arrayname="", flmult=22):
+def make_array_variant(
+    lib, variant, resonators, boxconfig, feedlineconfig, viawire, dietext, arrayname="", flmult=22
+):
     b = boxconfig
 
     top = gdstk.Cell(f"tm4-array-{arrayname}-v{variant:d}")
@@ -97,7 +102,7 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
 
     freqs = list(resonators.keys())
     freqs = np.array(freqs)[shuffler].reshape((6, 6))
- 
+
     COLUMN_PAD = 444
     STUB_HEIGHT = 444
     flstub = feedlineconfig().draw(STUB_HEIGHT, ports=([], []), cellcache={})
@@ -122,10 +127,15 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
     text_origin = (222 * -12, 222 * -10)
     text.extend(
         gdstk.text(
-            f"{dietext} v{variant}",
+            f"{dietext}",
             72,
             (text_origin[0], text_origin[1] - 128),
             False,
+        )
+    )
+    text.append(
+        gdstk.rectangle(
+            (text_origin[0], text_origin[1] - 256), (text_origin[0] + 768, text_origin[1] - 128 - 16)
         )
     )
     for i, x in enumerate(range(-COLS // 4 + 1, COLS // 4 + 1)):
