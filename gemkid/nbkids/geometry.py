@@ -80,8 +80,8 @@ class BoxConfig(mecstyle.BoxConfig):
     box_layer: DrawingLayer = NB
     width: float = 444
     height: float = 444
-    extended_coupler_pullback: bool = False
-    double_coupler: bool = True
+    extended_coupler_pullback: bool = True
+    double_coupler: bool = False
 
 if __name__ == "__main__":
     import numpy as np
