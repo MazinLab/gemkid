@@ -40,27 +40,27 @@ class UEFeedlineConfig(geometry.FeedlineConfig):
 
 @dataclass(eq=True, frozen=True)
 class InductorConfig(mecstyle.InductorDoubledConfig):
-    legs: int = 6
+    legs: int = 4
     leg_gap: float = 0.5
-    leg_length: float = 34
-    leg_width: float = 2.0
+    leg_length: float = 62
+    leg_width: float = 3.0
     leg_landing: float = 8
     leg_layer: DrawingLayer = HF
-    wiring_width: float = 2.0
+    wiring_width: float = 3.0
     wiring_gap: float = 0.5
     wiring_layer: DrawingLayer = HF
     wiring_extra: float = 8.0
-    wiring_extra_height: float = 2
+    wiring_extra_height: float = 0
 
 @dataclass(eq=True, frozen=True)
 class CapacitorConfig(mecstyle.CapacitorConfig):
-    legs: int = 44
+    legs: int = 50
     leg_gap: float = 1
-    leg_length: tuple[float, float] = (40, 88 + 4)
+    leg_length: tuple[float, float] = (60, 88 + 4 + 8 + 4 + 4)
     leg_width: float = 1
     leg_landing: float = 0.0
     leg_layer: DrawingLayer = HF
-    wiring_width: float = 14.0
+    wiring_width: float = 6.0
     wiring_layer: DrawingLayer = HF
     extra_height: float = 0.0
 
