@@ -4,11 +4,20 @@ import gdstk
 from dataclasses import dataclass
 from typing import Optional
 
-from ..ue1.layers import HF_LL, ATA_NB, HF_CONTACT
+from ..ue1.layers import HF_LL, TIN_LL, HF_CONTACT
 from ..layers import DrawingLayer
 
 from . import geometry
 from . import array
+
+
+@dataclass(eq=True, frozen=True)
+class UEFeedlineConfig(geometry.UEFeedlineConfig):
+    a: float = 4.5 + 2.25
+    b: float = 4 - 2.25
+    c: float = 9.5
+    feed_layer: tuple[int, int] | DrawingLayer = TIN_LL
+    ground_layer: tuple[int, int] | DrawingLayer = TIN_LL
 
 
 @dataclass(eq=True, frozen=True)
@@ -18,7 +27,7 @@ class ViaWire(geometry.ViaWire):
     bridge_land: bool = True
     landing_width: float = 4
     landing_length: float = 18
-    landing_layer: tuple[int, int] | DrawingLayer = ATA_NB
+    landing_layer: tuple[int, int] | DrawingLayer = TIN_LL
     via_width: float = 3
     via_length: float = 15
     via_layer: tuple[int, int] | DrawingLayer = HF_CONTACT
@@ -29,14 +38,14 @@ class ViaWire(geometry.ViaWire):
 @dataclass(eq=True, frozen=True)
 class InductorConfig(geometry.InductorConfig):
     legs: int = 4
-    leg_gap: float = 2.0
+    leg_gap: float = 0.75
     leg_length: float = 40.0
     leg_width: float = 4.0
     leg_landing: float = 8
     leg_layer: DrawingLayer = HF_LL
     wiring_width: float = 4.0
-    wiring_gap: float = 2.0
-    wiring_layer: DrawingLayer = ATA_NB
+    wiring_gap: float = 0.75
+    wiring_layer: DrawingLayer = TIN_LL
     wiring_extra: float = 8.0
     wiring_extra_height: float = 10.0
     via_over: Optional[float] = None
@@ -51,12 +60,12 @@ class InductorConfig(geometry.InductorConfig):
 class CapacitorConfig(geometry.CapacitorConfig):
     legs: int = 66
     leg_gap: float = 1
-    leg_length: tuple[float, float] = (222 - 33 + 212, 220)
+    leg_length: tuple[float, float] = (212-33, 112)
     leg_width: float = 1
     leg_landing: float = 0.0
-    leg_layer: DrawingLayer = ATA_NB
+    leg_layer: DrawingLayer = TIN_LL
     wiring_width: float = 4.0
-    wiring_layer: DrawingLayer = ATA_NB
+    wiring_layer: DrawingLayer = TIN_LL
     extra_height: float = 0.0
 
 
@@ -64,18 +73,18 @@ class CapacitorConfig(geometry.CapacitorConfig):
 class BoxConfig(geometry.BoxConfig):
     inductor: Optional[InductorConfig]
     capacitor: Optional[CapacitorConfig]
-    feedline: geometry.UEFeedlineConfig = geometry.UEFeedlineConfig(feed_layer=ATA_NB, ground_layer=ATA_NB)
+    feedline: UEFeedlineConfig = UEFeedlineConfig()
     coupler_width: float = 2.0
     coupler_gap: float = 4.0
     coupler_fill: bool = False
-    coupler_layer: DrawingLayer = ATA_NB
+    coupler_layer: DrawingLayer = TIN_LL
     coupler_via: Optional[geometry.mecstyle.ViaWire] = (
         None  # mecstyle.ViaWire(2.0, HF, False, 2.0, 2.0, ATA_NB, 2.0, 2.0, HF_CONTACT)
     )
     box_width: float = 2.0
     box_gap: float = 1.0
-    box_layer: DrawingLayer = ATA_NB
-    width: float = 444
+    box_layer: DrawingLayer = TIN_LL
+    width: float = 222
     height: float = 222
     extended_coupler_pullback: bool = False
     double_coupler: bool = True
@@ -166,13 +175,13 @@ if __name__ == "__main__":
         b = BoxConfig(
             InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1]),
             CapacitorConfig(),
-            geometry.UEFeedlineConfig(),
+            UEFeedlineConfig(),
         )
 
         bhqc = BoxConfig(
             InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1]),
             CapacitorConfig(),
-            geometry.UEFeedlineConfig(),
+            UEFeedlineConfig(),
             double_coupler=False,
             extended_coupler_pullback=True,
         )
@@ -182,12 +191,12 @@ if __name__ == "__main__":
             resonators_tm,
             b,
             bhqc,
-            geometry.UEFeedlineConfig,
+            UEFeedlineConfig,
             ViaWire,
             "UE2 LL 20pH",
             variants,
             "ll-8ph",
         )
-        array.make_array_variant(lib, i, resonators_array, b, geometry.UEFeedlineConfig, ViaWire, "ll-8ph")
+        array.make_array_variant(lib, i, resonators_array, b, UEFeedlineConfig, ViaWire, "ll-8ph")
 
     lib.write_gds("ue2-ll.gds")

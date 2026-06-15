@@ -1,7 +1,7 @@
 import gdstk
 
 from .geometry import *
-from ..ue1.layers import ATA_NB, HF, HF_CONTACT, HF_CONTACT_LIFTOFF, ASI, ASI_EP, MLA_MARK, MLA_PITCH
+from ..ue1.layers import TIN_LL, HF, HF_CONTACT, HF_CONTACT_LIFTOFF, ASI, ASI_EP, MLA_MARK, MLA_PITCH
 
 
 @dataclass(eq=True, frozen=True)
@@ -12,7 +12,7 @@ class Vernier:
     vernier_length: float = 16
     vernier_spacing: float = 8
     center_stub: float = 4
-    lower_layer: tuple[int, int] | DrawingLayer = ATA_NB
+    lower_layer: tuple[int, int] | DrawingLayer = TIN_LL
     upper_layer: tuple[int, int] | DrawingLayer = MLA_MARK
 
     def draw_polys(self, point: tuple[float, float], rotation: float = 0.0):
@@ -96,7 +96,7 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         gdstk.cross((+b.focus_point[0], b.focus_point[1] + 222), 32, 4),
         gdstk.cross((-b.focus_point[0], b.focus_point[1] + 222), 32, 4),
     ]
-    flstub.add(*gdstk.boolean(rects, crosses, "not", 0.0001, *ATA_NB))
+    flstub.add(*gdstk.boolean(rects, crosses, "not", 0.0001, *TIN_LL))
 
     lib.add(flstub)
 
@@ -166,7 +166,7 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         for y in range(0, int(min(-ARRAY_BOTTOM, ARRAY_TOP)), 222):
             crosses.append(gdstk.cross((xll + 222, y), 32, 4))
             crosses.append(gdstk.cross((xll + 222, -y - 222), 32, 4))
-        top.add(*gdstk.boolean(rect, crosses, "not", 0.0001, *ATA_NB))
+        top.add(*gdstk.boolean(rect, crosses, "not", 0.0001, *TIN_LL))
 
     ARRAY_LEFT = -444 * COLS // 2 - (COLS - 3) // 2 * COLUMN_PAD
     ARRAY_RIGHT = +444 * COLS // 2 + (COLS - 3) // 2 * COLUMN_PAD
@@ -205,7 +205,7 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
     ARRAY_WIRED_BOTTOM = ARRAY_BOTTOM - CURVATURE_RADIUS * 2 - SPACING
     ARRAY_WIRED_TOP = ARRAY_TOP + CURVATURE_RADIUS * 2 + SPACING
     rect = gdstk.rectangle((ARRAY_LEFT, ARRAY_WIRED_BOTTOM), (ARRAY_RIGHT, ARRAY_BOTTOM))
-    wiring.add(*gdstk.boolean(rect, paths, "not", 0.0001, *ATA_NB))
+    wiring.add(*gdstk.boolean(rect, paths, "not", 0.0001, *TIN_LL))
 
     capping = gdstk.Cell(f"Bond Cap-v{variant:d}")
     m = 22
@@ -229,7 +229,7 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
             (-(f.a) * m, stop),
             (-(f.a), HEIGHT),
         ],
-        *ATA_NB,
+        *TIN_LL,
     ).translate((0, -5600 // 2 - HEIGHT + CAPPING_HEIGHT))
     rect = gdstk.rectangle((ARRAY_LEFT, -5600 // 2), (ARRAY_RIGHT, -5600 // 2 + CAPPING_HEIGHT))
     for i in range(-3, 3 + 1):
@@ -242,7 +242,7 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
                 datatype=SOLDER_MASK.gds_layer[1],
             )
         )
-    capping.add(*gdstk.boolean(rect, outline, "not", 0.0001, *ATA_NB))
+    capping.add(*gdstk.boolean(rect, outline, "not", 0.0001, *TIN_LL))
 
     top.add(gdstk.Reference(wiring))
     top.add(gdstk.Reference(wiring, rotation=np.pi, origin=(0, b.focus_point[1] * 4 - STUB_HEIGHT // 2)))
@@ -259,7 +259,7 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         ],
     )
     p.vertical(ARRAY_WIRED_BOTTOM)
-    top.add(*gdstk.boolean(prect, p, "not", 0.0001, *ATA_NB))
+    top.add(*gdstk.boolean(prect, p, "not", 0.0001, *TIN_LL))
 
     prect = gdstk.rectangle((ARRAY_LEFT, +5600 // 2 - CAPPING_HEIGHT), (ARRAY_RIGHT, ARRAY_WIRED_TOP))
     p = gdstk.RobustPath(
@@ -271,7 +271,7 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         ],
     )
     p.vertical(ARRAY_WIRED_TOP)
-    top.add(*gdstk.boolean(prect, p, "not", 0.0001, *ATA_NB))
+    top.add(*gdstk.boolean(prect, p, "not", 0.0001, *TIN_LL))
 
     via = viawire()
     xovers = gdstk.Cell(f"crossovers-v{variant:d}")
@@ -335,11 +335,11 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
             crosses.extend(Vernier().draw_polys((x - 111, y), np.pi))
             crosses.extend(Vernier().draw_polys((x, y + 111), np.pi / 2))
             crosses.extend(Vernier().draw_polys((x, y - 111), -np.pi / 2))
-            crosses.append(gdstk.cross((x, y), 75, 20, *ATA_NB))
+            crosses.append(gdstk.cross((x, y), 75, 20, *TIN_LL))
             crosses.append(gdstk.cross((x, y), 72, 18, *MLA_MARK))
 
     crosses_atanb = [
-        c for c in crosses if c.layer == ATA_NB.gds_layer[0] and c.datatype == ATA_NB.gds_layer[1]
+        c for c in crosses if c.layer == TIN_LL.gds_layer[0] and c.datatype == TIN_LL.gds_layer[1]
     ]
     crosses_mark = [
         c for c in crosses if c.layer == MLA_MARK.gds_layer[0] and c.datatype == MLA_MARK.gds_layer[1]
@@ -351,7 +351,7 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
 
     AP = 2850
     for x, y in [(-AP, -AP), (-AP, AP), (AP, AP), (AP, -AP)]:
-        top.add(gdstk.cross((x, y), 100, 20, *ATA_NB))
+        top.add(gdstk.cross((x, y), 100, 20, *TIN_LL))
         top.add(gdstk.cross((x, y), 100, 20, *HF))
         top.add(gdstk.rectangle((x - 50, y - 50), (x + 50, y + 50), *HF_CONTACT))
 
@@ -359,18 +359,18 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         vs = []
         for i, pair in enumerate(
             [
-                (ATA_NB, HF),
-                (ATA_NB, HF_CONTACT),
-                (ATA_NB, HF_CONTACT_LIFTOFF),
-                (ATA_NB, ASI),
-                (ATA_NB, ASI_EP),
+                (TIN_LL, HF),
+                (TIN_LL, HF_CONTACT),
+                (TIN_LL, HF_CONTACT_LIFTOFF),
+                (TIN_LL, ASI),
+                (TIN_LL, ASI_EP),
             ]
         ):
             vs.extend(Vernier(lower_layer=pair[0], upper_layer=pair[1]).draw_polys((-AP + 100 + 50 * i, -AP)))
         top.add(*[v.rotate(rot) for v in vs])
         top.add(*[v.copy().mirror((-1, -1), (1, 1)) for v in vs])
 
-    top.add(*gdstk.boolean(rects, crosses_atanb + text, "not", 0.0001, *ATA_NB))
+    top.add(*gdstk.boolean(rects, crosses_atanb + text, "not", 0.0001, *TIN_LL))
     top.add(*crosses_mark)
     top.add(
         gdstk.Polygon(
