@@ -43,8 +43,8 @@ class InductorConfig(geometry.InductorConfig):
     leg_width: float = 4.0
     leg_landing: float = 8
     leg_layer: DrawingLayer = HF_LL
-    wiring_width: float = 4.0
-    wiring_gap: float = 0.75
+    wiring_width: float = 3.0
+    wiring_gap: float = 1.75
     wiring_layer: DrawingLayer = TIN_LL
     wiring_extra: float = 8.0
     wiring_extra_height: float = 10.0
