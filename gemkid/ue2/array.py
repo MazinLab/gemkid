@@ -1,4 +1,5 @@
 import gdstk
+from dataclasses import dataclass
 
 from .geometry import *
 from ..ue1.layers import TIN_LL, HF, HF_CONTACT, HF_CONTACT_LIFTOFF, ASI, ASI_EP, MLA_MARK, MLA_PITCH
@@ -70,7 +71,22 @@ class Vernier:
         return [p.rotate(rotation).translate(point) for p in rects]
 
 
-def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viawire, arrayname=""):
+@dataclass
+class ArrayConfig:
+    dimensions: tuple[int, int] = (14, 106)
+    column_pad: float | int = 0
+    row_pad: float | int = 0
+    feedlines: int = 8
+    inner_width = 25900
+    inner_height = 25900
+    outer_width = 26000
+    outer_height = 26000
+    padring = 25
+
+
+def make_array_variant(
+    lib, variant, resonators, boxconfig, feedlineconfig, viawire, arrayname="", config=ArrayConfig()
+):
     b = boxconfig
 
     top = gdstk.Cell(f"tm4-array-{arrayname}-v{variant:d}")
@@ -79,105 +95,100 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
     np.random.seed(42)
     np.random.shuffle(shuffler)
 
-    freqs = list(resonators.keys())
-    freqs = np.array(freqs)[shuffler].reshape((6, 6))
- 
-    COLUMN_PAD = 444
-    STUB_HEIGHT = 444
-    flstub = feedlineconfig().draw(STUB_HEIGHT, ports=([], []), cellcache={})
-    flstub.name = f"flstub-v{variant:d}"
+    # freqs = list(resonators.keys())
+    # freqs = np.array(freqs)[shuffler].reshape((6, 6))
+    freqs = np.zeros(config.dimensions) + list(resonators.keys())[0]
+
+    COLUMN_PAD = config.column_pad
+    STUB_HEIGHT = config.row_pad
+    # flstub = feedlineconfig().draw(STUB_HEIGHT, ports=([], []), cellcache={})
+    # flstub.name = f"flstub-v{variant:d}"
     rects = [
-        gdstk.rectangle((feedlineconfig().width_half, 0), (444, STUB_HEIGHT)),
-        gdstk.rectangle((-feedlineconfig().width_half, 0), (-444, STUB_HEIGHT)),
+        gdstk.rectangle((feedlineconfig().width_half, 0), (boxconfig.width, STUB_HEIGHT)),
+        gdstk.rectangle((-feedlineconfig().width_half, 0), (-boxconfig.width, STUB_HEIGHT)),
     ]
-    crosses = [
-        gdstk.cross(b.focus_point, 32, 4),
-        gdstk.cross((-b.focus_point[0], b.focus_point[1]), 32, 4),
-        gdstk.cross((+b.focus_point[0], b.focus_point[1] + 222), 32, 4),
-        gdstk.cross((-b.focus_point[0], b.focus_point[1] + 222), 32, 4),
-    ]
-    flstub.add(*gdstk.boolean(rects, crosses, "not", 0.0001, *TIN_LL))
+    # crosses = [
+    #     gdstk.cross(b.focus_point, 32, 4),
+    #     gdstk.cross((-b.focus_point[0], b.focus_point[1]), 32, 4),
+    #     gdstk.cross((+b.focus_point[0], b.focus_point[1] + boxconfig.height / 2), 32, 4),
+    #     gdstk.cross((-b.focus_point[0], b.focus_point[1] + boxconfig.height / 2), 32, 4),
+    # ]
+    # flstub.add(*gdstk.boolean(rects, crosses, "not", 0.0001, *TIN_LL))
+    # lib.add(flstub)
 
-    lib.add(flstub)
+    ROWS = config.dimensions[1]
+    COLS = config.dimensions[0]
 
-    ROWS = 6
-    COLS = 6
+    FEEDLINE_LEFT = -boxconfig.width * COLS // 2 - (COLS - COLS // 2) // 2 * COLUMN_PAD
+    FEEDLINE_RIGHT = +boxconfig.width * COLS // 2 + (COLS - COLS // 2) // 2 * COLUMN_PAD
+    FEEDLINE_WIDTH = COLS * boxconfig.width
+    ARRAY_BOTTOM = (-ROWS / 2) * (boxconfig.height + STUB_HEIGHT) - b.focus_point[1] + boxconfig.height
+    ARRAY_TOP = ARRAY_BOTTOM + (boxconfig.height + STUB_HEIGHT) * ROWS
+    ARRAY_LEFT = -FEEDLINE_WIDTH * config.feedlines / 2
+    ARRAY_RIGHT = FEEDLINE_WIDTH * config.feedlines / 2
+
+    for r in range(ROWS + 2):
+        for c in range(COLS * config.feedlines + 4):
+            x = ARRAY_LEFT + (c - 2) * boxconfig.width + boxconfig.width / 2
+            y = ARRAY_BOTTOM + (r - 1) * boxconfig.height + b.focus_point[1]
+            top.add(gdstk.cross((x, y), 32, 4, 100, 0))
+
+    assert COLS % 2 == 0
+    assert ROWS % 2 == 0
+
+    feedline = gdstk.Cell(f"array-feedline-v{variant}")
+    lib.add(feedline)
     text = []
-    text_origin = (222 * -12, 222 * -10)
-    for i, x in enumerate(range(-COLS // 4 + 1, COLS // 4 + 1)):
-        for j, y in enumerate(range(-ROWS // 2, ROWS // 2)):
-            left = b.draw(**(resonators[freqs[i * 2][j]]), cellcache={})
-            right = b.draw(**(resonators[freqs[i * 2 + 1][j]]), cellcache={})
+    # text_origin = (boxconfig.width * -12, boxconfig.height * -10)
+    for i in range(0, COLS, 2):
+        for j in range(ROWS):
+            left = b.draw(**(resonators[freqs[i][j]]), cellcache={})
+            right = b.draw(**(resonators[freqs[i + 1][j]]), cellcache={})
             left.name = f"left-r{j}c{i}-v{variant}"
             right.name = f"right-r{j}c{i}-v{variant}"
-            if y != -ROWS // 4 - 1:
-                top.add(
-                    gdstk.Reference(
-                        flstub,
-                        origin=(
-                            4 * 222 * x + x * COLUMN_PAD,
-                            y * 222 + y * STUB_HEIGHT - 222 - b.focus_point[1],
-                        ),
-                    )
-                )
-            top.add(
+            feedline.add(
                 gdstk.Reference(
                     left,
                     origin=(
-                        4 * 222 * x + x * COLUMN_PAD,
-                        y * 222 + y * STUB_HEIGHT - b.focus_point[1] + 222,
+                        FEEDLINE_LEFT + i * boxconfig.width + boxconfig.width,
+                        ARRAY_BOTTOM + j * boxconfig.height,
                     ),
                 )
             )
-            top.add(
+            feedline.add(
                 gdstk.Reference(
                     right,
                     origin=(
-                        4 * 222 * x + x * COLUMN_PAD,
-                        y * 222 + y * STUB_HEIGHT - b.focus_point[1] + 222,
+                        FEEDLINE_LEFT + i * boxconfig.width + boxconfig.width,
+                        ARRAY_BOTTOM + j * boxconfig.height,
                     ),
                     x_reflection=True,
                     rotation=np.pi,
                 )
             )
             lib.add(left, right)
-            text.extend(
-                gdstk.text(
-                    f"{freqs[i * 2 + 1][j]:.3f} {freqs[i * 2][j]:.3f}",
-                    32,
-                    (4 * 64 * i + text_origin[0], j * 128 + text_origin[1]),
-                    False,
-                    *HF,
-                )
-            )
-    for x in range(-7, 8):
-        for y in range(-7, 8):
-            flstub.add(gdstk.cross((x * 222, y * 222 + b.focus_point[1] + 222), 32, 4, *MLA_PITCH))
 
-    ARRAY_BOTTOM = (-ROWS // 2) * (222 + STUB_HEIGHT) - b.focus_point[1] + 222
-    ARRAY_TOP = ARRAY_BOTTOM + ROWS * (222 + STUB_HEIGHT) - STUB_HEIGHT
     for x in range(-COLS // 4 + 1, COLS // 4):
-        xll = 4 * 222 * x + x * COLUMN_PAD + 444
+        xll = 2 * boxconfig.width * x + x * COLUMN_PAD + boxconfig.width
         rect = gdstk.rectangle(
             (xll, ARRAY_BOTTOM),
             (xll + COLUMN_PAD, ARRAY_TOP),
         )
         crosses = []
-        for y in range(0, int(min(-ARRAY_BOTTOM, ARRAY_TOP)), 222):
-            crosses.append(gdstk.cross((xll + 222, y), 32, 4))
-            crosses.append(gdstk.cross((xll + 222, -y - 222), 32, 4))
-        top.add(*gdstk.boolean(rect, crosses, "not", 0.0001, *TIN_LL))
+        for y in range(0, int(min(-ARRAY_BOTTOM, ARRAY_TOP)), boxconfig.height):
+            crosses.append(gdstk.cross((xll + boxconfig.width, y), 32, 4))
+            crosses.append(gdstk.cross((xll + boxconfig.width, -y - boxconfig.height), 32, 4))
+        feedline.add(*gdstk.boolean(rect, crosses, "not", 0.0001, *TIN_LL))
 
-    ARRAY_LEFT = -444 * COLS // 2 - (COLS - 3) // 2 * COLUMN_PAD
-    ARRAY_RIGHT = +444 * COLS // 2 + (COLS - 3) // 2 * COLUMN_PAD
-    CURVATURE_RADIUS = 200
+    CURVATURE_RADIUS = 175
     SPACING = 100
+    WIRING_HEIGHT = CURVATURE_RADIUS * 2 + SPACING
 
     wiring = gdstk.Cell(f"Wiring-v{variant:d}")
     paths = []
-    for x in range(-1, 1, 2):
+    for i in range(0, COLS - 2, 4):
         p = gdstk.RobustPath(
-            (2 * x * 444 + x * COLUMN_PAD, ARRAY_BOTTOM),
+            (FEEDLINE_LEFT + i * boxconfig.width + boxconfig.width + i * COLUMN_PAD, WIRING_HEIGHT / 2),
             [feedlineconfig().b, feedlineconfig.b],
             [
                 feedlineconfig().a + feedlineconfig().b / 2,
@@ -185,11 +196,11 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
             ],
         )
         p.arc(CURVATURE_RADIUS, -np.pi, -np.pi / 2)
-        p.horizontal(444 * 2 + COLUMN_PAD - CURVATURE_RADIUS * 2, relative=True)
+        p.horizontal(boxconfig.width * 2 + COLUMN_PAD - CURVATURE_RADIUS * 2, relative=True)
         p.arc(CURVATURE_RADIUS, -np.pi / 2, 0)
         paths.append(p)
     p = gdstk.RobustPath(
-        (0, ARRAY_BOTTOM - CURVATURE_RADIUS * 2 - SPACING),
+        (0, -WIRING_HEIGHT / 2),
         [feedlineconfig().b, feedlineconfig.b],
         [
             feedlineconfig().a + feedlineconfig().b / 2,
@@ -197,20 +208,20 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         ],
     )
     p.arc(CURVATURE_RADIUS, -np.pi, -np.pi * 3 / 2)
-    p.horizontal(444 * 3 - CURVATURE_RADIUS * 2, relative=True)
+    p.horizontal(FEEDLINE_RIGHT - boxconfig.width - CURVATURE_RADIUS)
     p.arc(CURVATURE_RADIUS, -np.pi / 2, 0)
-    p.vertical(ARRAY_BOTTOM)
+    p.vertical(SPACING + CURVATURE_RADIUS)
     paths.append(p)
 
-    ARRAY_WIRED_BOTTOM = ARRAY_BOTTOM - CURVATURE_RADIUS * 2 - SPACING
-    ARRAY_WIRED_TOP = ARRAY_TOP + CURVATURE_RADIUS * 2 + SPACING
-    rect = gdstk.rectangle((ARRAY_LEFT, ARRAY_WIRED_BOTTOM), (ARRAY_RIGHT, ARRAY_BOTTOM))
+    ARRAY_WIRED_BOTTOM = ARRAY_BOTTOM - WIRING_HEIGHT
+    ARRAY_WIRED_TOP = ARRAY_TOP + WIRING_HEIGHT
+    rect = gdstk.rectangle((FEEDLINE_LEFT, -WIRING_HEIGHT / 2), (FEEDLINE_RIGHT, WIRING_HEIGHT / 2))
     wiring.add(*gdstk.boolean(rect, paths, "not", 0.0001, *TIN_LL))
 
     capping = gdstk.Cell(f"Bond Cap-v{variant:d}")
     m = 22
     f = feedlineconfig()
-    CAPPING_HEIGHT = 450
+    CAPPING_HEIGHT = 520
     HEIGHT = 750
     TAPER = 125
     stop = HEIGHT - TAPER
@@ -230,8 +241,10 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
             (-(f.a), HEIGHT),
         ],
         *TIN_LL,
-    ).translate((0, -5600 // 2 - HEIGHT + CAPPING_HEIGHT))
-    rect = gdstk.rectangle((ARRAY_LEFT, -5600 // 2), (ARRAY_RIGHT, -5600 // 2 + CAPPING_HEIGHT))
+    ).translate((0, -config.inner_height / 2 - HEIGHT + CAPPING_HEIGHT))
+    rect = gdstk.rectangle(
+        (FEEDLINE_LEFT, -config.inner_height / 2), (FEEDLINE_RIGHT, -config.inner_height / 2 + CAPPING_HEIGHT)
+    )
     for i in range(-3, 3 + 1):
         capping.add(
             gdstk.ellipse(
@@ -244,14 +257,18 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         )
     capping.add(*gdstk.boolean(rect, outline, "not", 0.0001, *TIN_LL))
 
-    top.add(gdstk.Reference(wiring))
-    top.add(gdstk.Reference(wiring, rotation=np.pi, origin=(0, b.focus_point[1] * 4 - STUB_HEIGHT // 2)))
-    top.add(gdstk.Reference(capping))
-    top.add(gdstk.Reference(capping, rotation=np.pi))
+    feedline.add(gdstk.Reference(wiring, origin=(0, ARRAY_BOTTOM - WIRING_HEIGHT / 2)))
+    feedline.add(gdstk.Reference(wiring, rotation=np.pi, origin=(0, ARRAY_TOP + WIRING_HEIGHT / 2)))
+    for i in range(config.feedlines):
+        top.add(gdstk.Reference(feedline, origin=(ARRAY_LEFT + i * FEEDLINE_WIDTH + FEEDLINE_WIDTH / 2, 0)))
+        top.add(gdstk.Reference(capping, origin=(ARRAY_LEFT + i * FEEDLINE_WIDTH + FEEDLINE_WIDTH / 2, 0)))
+        top.add(gdstk.Reference(capping, origin=(ARRAY_LEFT + i * FEEDLINE_WIDTH + FEEDLINE_WIDTH / 2, 0), rotation=np.pi))
 
-    prect = gdstk.rectangle((ARRAY_LEFT, -5600 // 2 + CAPPING_HEIGHT), (ARRAY_RIGHT, ARRAY_WIRED_BOTTOM))
+    prect = gdstk.rectangle(
+        (FEEDLINE_LEFT, -config.inner_height / 2 + CAPPING_HEIGHT), (FEEDLINE_RIGHT, ARRAY_WIRED_BOTTOM)
+    )
     p = gdstk.RobustPath(
-        (0, -5600 // 2),
+        (0, -config.inner_height / 2),
         [feedlineconfig().b, feedlineconfig.b],
         [
             feedlineconfig().a + feedlineconfig().b / 2,
@@ -259,11 +276,13 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         ],
     )
     p.vertical(ARRAY_WIRED_BOTTOM)
-    top.add(*gdstk.boolean(prect, p, "not", 0.0001, *TIN_LL))
+    feedline.add(*gdstk.boolean(prect, p, "not", 0.0001, *TIN_LL))
 
-    prect = gdstk.rectangle((ARRAY_LEFT, +5600 // 2 - CAPPING_HEIGHT), (ARRAY_RIGHT, ARRAY_WIRED_TOP))
+    prect = gdstk.rectangle(
+        (FEEDLINE_LEFT, +config.inner_height / 2 - CAPPING_HEIGHT), (FEEDLINE_RIGHT, ARRAY_WIRED_TOP)
+    )
     p = gdstk.RobustPath(
-        (0, 5600 // 2),
+        (0, config.inner_height / 2),
         [feedlineconfig().b, feedlineconfig.b],
         [
             feedlineconfig().a + feedlineconfig().b / 2,
@@ -271,13 +290,13 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         ],
     )
     p.vertical(ARRAY_WIRED_TOP)
-    top.add(*gdstk.boolean(prect, p, "not", 0.0001, *TIN_LL))
+    feedline.add(*gdstk.boolean(prect, p, "not", 0.0001, *TIN_LL))
 
     via = viawire()
     xovers = gdstk.Cell(f"crossovers-v{variant:d}")
     XOVER_LENGTH = 56
     for y in range(-ROWS // 2, ROWS // 2):
-        yposh = y * 222 + y * STUB_HEIGHT - b.focus_point[1] + 222
+        yposh = y * boxconfig.height + y * STUB_HEIGHT - b.focus_point[1] + boxconfig.height
         yposv = yposh + b.height - b.box_width - b.coupler_gap - b.coupler_width / 2
         xovers.add(
             *via.draw_polys(
@@ -291,8 +310,8 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
                 (+f.a + f.b + f.c / 2, +XOVER_LENGTH / 2 + yposv),
             )
         )
-        xovers.add(*via.draw_polys((-XOVER_LENGTH / 2, yposh), (+XOVER_LENGTH / 2, yposh)))
-        xovers.add(*via.draw_polys((-XOVER_LENGTH / 2, yposh), (+XOVER_LENGTH / 2, yposh)))
+        xovers.add(*via.draw_polys((-XOVER_LENGTH / 2, yposh + 25), (+XOVER_LENGTH / 2, yposh + 25)))
+
     xovers.add(
         *via.draw_polys(
             (-XOVER_LENGTH / 2, ARRAY_TOP + CURVATURE_RADIUS + SPACING + CURVATURE_RADIUS),
@@ -326,16 +345,17 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         )
 
     for x in range(-COLS // 4 + 1, COLS // 4 + 1):
-        top.add(gdstk.Reference(xovers, (4 * 222 * x + x * COLUMN_PAD, 0)))
+        feedline.add(gdstk.Reference(xovers, (2 * boxconfig.width * x + x * COLUMN_PAD, 0)))
+        feedline.add(gdstk.Reference(xovers, (2 * boxconfig.width * x + x * COLUMN_PAD, 0)))
 
     crosses = []
-    for x in [222 * 12, -222 * 12]:
-        for y in [222 * 12, -222 * 12]:
+    for x in [ARRAY_LEFT - boxconfig.width * 3 / 2, ARRAY_RIGHT + boxconfig.width * 3/ 2]:
+        for y in [boxconfig.height * (ROWS / 2 - 1), -boxconfig.height * (ROWS / 2 - 1)]:
             crosses.extend(Vernier().draw_polys((x + 111, y), 0.0))
             crosses.extend(Vernier().draw_polys((x - 111, y), np.pi))
             crosses.extend(Vernier().draw_polys((x, y + 111), np.pi / 2))
             crosses.extend(Vernier().draw_polys((x, y - 111), -np.pi / 2))
-            crosses.append(gdstk.cross((x, y), 75, 20, *TIN_LL))
+            crosses.append(gdstk.cross((x, y), 74, 20, *TIN_LL))
             crosses.append(gdstk.cross((x, y), 72, 18, *MLA_MARK))
 
     crosses_atanb = [
@@ -345,46 +365,50 @@ def make_array_variant(lib, variant, resonators, boxconfig, feedlineconfig, viaw
         c for c in crosses if c.layer == MLA_MARK.gds_layer[0] and c.datatype == MLA_MARK.gds_layer[1]
     ]
     rects = [
-        gdstk.rectangle((-5600 / 2, -5600 / 2), (ARRAY_LEFT, 5600 / 2)),
-        gdstk.rectangle((5600 / 2, -5600 / 2), (ARRAY_RIGHT, 5600 / 2)),
+        gdstk.rectangle(
+            (-config.inner_width / 2, -config.inner_height / 2), (ARRAY_LEFT, config.inner_height / 2)
+        ),
+        gdstk.rectangle(
+            (config.inner_width / 2, -config.inner_height / 2), (ARRAY_RIGHT, config.inner_height / 2)
+        ),
     ]
 
-    AP = 2850
-    for x, y in [(-AP, -AP), (-AP, AP), (AP, AP), (AP, -AP)]:
-        top.add(gdstk.cross((x, y), 100, 20, *TIN_LL))
-        top.add(gdstk.cross((x, y), 100, 20, *HF))
-        top.add(gdstk.rectangle((x - 50, y - 50), (x + 50, y + 50), *HF_CONTACT))
-
-    for rot in [0, np.pi / 2, np.pi, 3 * np.pi / 2]:
-        vs = []
-        for i, pair in enumerate(
-            [
-                (TIN_LL, HF),
-                (TIN_LL, HF_CONTACT),
-                (TIN_LL, HF_CONTACT_LIFTOFF),
-                (TIN_LL, ASI),
-                (TIN_LL, ASI_EP),
-            ]
-        ):
-            vs.extend(Vernier(lower_layer=pair[0], upper_layer=pair[1]).draw_polys((-AP + 100 + 50 * i, -AP)))
-        top.add(*[v.rotate(rot) for v in vs])
-        top.add(*[v.copy().mirror((-1, -1), (1, 1)) for v in vs])
+    CROSS_OFFSET = 333
+    for x in [ARRAY_LEFT - CROSS_OFFSET, ARRAY_RIGHT + CROSS_OFFSET]:
+        for y in [boxconfig.height * (ROWS / 2 + 1) + CROSS_OFFSET, -boxconfig.height * (ROWS / 2 + 1) - CROSS_OFFSET]:
+            top.add(gdstk.cross((x, y), 100, 20, *TIN_LL))
+            top.add(gdstk.cross((x, y), 100, 20, *HF))
+            top.add(gdstk.rectangle((x - 50, y - 50), (x + 50, y + 50), *HF_CONTACT))
+            vs = []
+            for i, pair in enumerate(
+                [
+                    (TIN_LL, HF),
+                    (TIN_LL, HF_CONTACT),
+                    (TIN_LL, HF_CONTACT_LIFTOFF),
+                    (TIN_LL, ASI),
+                    (TIN_LL, ASI_EP),
+                ]
+            ):
+                vs.extend(Vernier(lower_layer=pair[0], upper_layer=pair[1]).draw_polys((x, y - np.sign(y) * (i + 1.5) * 50), np.pi/2))
+                vs.extend(Vernier(lower_layer=pair[0], upper_layer=pair[1]).draw_polys((x - np.sign(x) * (i + 1.5) * 50, y), 0))
+            crosses_atanb.extend([v for v in vs if v.layer == TIN_LL.gds_layer[0] and v.datatype==TIN_LL.gds_layer[1]])
+            top.add(*[v for v in vs if not (v.layer == TIN_LL.gds_layer[0] and v.datatype==TIN_LL.gds_layer[1])])
 
     top.add(*gdstk.boolean(rects, crosses_atanb + text, "not", 0.0001, *TIN_LL))
     top.add(*crosses_mark)
     top.add(
         gdstk.Polygon(
             [
-                (-3000, -3000),
-                (-3000, 3000),
-                (3000, 3000),
-                (3000, -3000),
-                (-2925, -3000),
-                (-2925, -2925),
-                (2925, -2925),
-                (2925, 2925),
-                (-2925, 2925),
-                (-2925, -3000),
+                (-config.outer_width / 2, -config.outer_height / 2),
+                (-config.outer_width / 2, config.outer_height / 2),
+                (config.outer_width / 2, config.outer_height / 2),
+                (config.outer_width / 2, -config.outer_height / 2),
+                (-(config.outer_width / 2 - config.padring), -config.outer_height / 2),
+                (-(config.outer_width / 2 - config.padring), -(config.outer_height / 2 - config.padring)),
+                ((config.outer_width / 2 - config.padring), -(config.outer_height / 2 - config.padring)),
+                ((config.outer_width / 2 - config.padring), (config.outer_height / 2 - config.padring)),
+                (-(config.outer_width / 2 - config.padring), (config.outer_height / 2 - config.padring)),
+                (-(config.outer_width / 2 - config.padring), -config.outer_height / 2),
             ]
         )
     )

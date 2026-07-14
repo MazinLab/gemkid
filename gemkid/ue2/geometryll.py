@@ -88,6 +88,15 @@ class BoxConfig(geometry.BoxConfig):
     height: float = 222
     extended_coupler_pullback: bool = False
     double_coupler: bool = True
+    box_width_extra: float = 0.0
+
+    def draw(self, coupler_tunable: float = 1, capacitor_tunable: float = 1, variation_layer=None, flatten=True, cellcache=...):
+        c = super().draw(coupler_tunable, capacitor_tunable, variation_layer, flatten, cellcache)
+        if type(c) is list:
+            c[0].add(gdstk.rectangle((self.feedline.width_half, self.box_width), (self.width, self.box_width + self.box_width_extra), *self.box_layer))
+        else:
+            c.add(gdstk.rectangle((self.feedline.width_half, self.box_width), (self.width, self.box_width + self.box_width_extra), *self.box_layer))
+        return c
 
 
 if __name__ == "__main__":
@@ -97,7 +106,7 @@ if __name__ == "__main__":
         (3, 0),
         (3, 5),
         (3, 10),
-        (3, 21.5),
+        (4.75, 21.5),
     ]
 
     lib = gdstk.Library("ue2-ll")
@@ -176,6 +185,7 @@ if __name__ == "__main__":
             InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1]),
             CapacitorConfig(),
             UEFeedlineConfig(),
+            box_width_extra=10.5
         )
 
         bhqc = BoxConfig(
@@ -184,6 +194,7 @@ if __name__ == "__main__":
             UEFeedlineConfig(),
             double_coupler=False,
             extended_coupler_pullback=True,
+            box_width_extra=10.5
         )
         geometry.make_tm_variant(
             lib,
@@ -195,8 +206,8 @@ if __name__ == "__main__":
             ViaWire,
             "UE2 LL 20pH",
             variants,
-            "ll-8ph",
+            "ll-20ph",
         )
-        array.make_array_variant(lib, i, resonators_array, b, UEFeedlineConfig, ViaWire, "ll-8ph")
+        array.make_array_variant(lib, i, resonators_array, b, UEFeedlineConfig, ViaWire, "ll-20ph")
 
     lib.write_gds("ue2-ll.gds")
