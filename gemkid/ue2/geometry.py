@@ -519,7 +519,7 @@ def make_tm_variant(
     endcap = gdstk.Cell("endcap{:d}".format(variant))
     ec = gdstk.rectangle((-2700, 0), (2700, 950), *boxconfig.box_layer)
     f = feedlineconfig()
-    m = 33
+    m = 22
     outline = gdstk.Polygon(
         [
             (-(f.a + f.b), 1000),

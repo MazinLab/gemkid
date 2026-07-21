@@ -1,8 +1,18 @@
-import gdstk
 from dataclasses import dataclass
 
+import gdstk
+
+from ..ue1.layers import (
+    ASI,
+    ASI_EP,
+    HF,
+    HF_CONTACT,
+    HF_CONTACT_LIFTOFF,
+    MLA_MARK,
+    MLA_PITCH,
+    TIN_LL,
+)
 from .geometry import *
-from ..ue1.layers import TIN_LL, HF, HF_CONTACT, HF_CONTACT_LIFTOFF, ASI, ASI_EP, MLA_MARK, MLA_PITCH
 
 
 @dataclass(eq=True, frozen=True)
@@ -101,20 +111,10 @@ def make_array_variant(
 
     COLUMN_PAD = config.column_pad
     STUB_HEIGHT = config.row_pad
-    # flstub = feedlineconfig().draw(STUB_HEIGHT, ports=([], []), cellcache={})
-    # flstub.name = f"flstub-v{variant:d}"
     rects = [
         gdstk.rectangle((feedlineconfig().width_half, 0), (boxconfig.width, STUB_HEIGHT)),
         gdstk.rectangle((-feedlineconfig().width_half, 0), (-boxconfig.width, STUB_HEIGHT)),
     ]
-    # crosses = [
-    #     gdstk.cross(b.focus_point, 32, 4),
-    #     gdstk.cross((-b.focus_point[0], b.focus_point[1]), 32, 4),
-    #     gdstk.cross((+b.focus_point[0], b.focus_point[1] + boxconfig.height / 2), 32, 4),
-    #     gdstk.cross((-b.focus_point[0], b.focus_point[1] + boxconfig.height / 2), 32, 4),
-    # ]
-    # flstub.add(*gdstk.boolean(rects, crosses, "not", 0.0001, *TIN_LL))
-    # lib.add(flstub)
 
     ROWS = config.dimensions[1]
     COLS = config.dimensions[0]
@@ -245,10 +245,10 @@ def make_array_variant(
     rect = gdstk.rectangle(
         (FEEDLINE_LEFT, -config.inner_height / 2), (FEEDLINE_RIGHT, -config.inner_height / 2 + CAPPING_HEIGHT)
     )
-    for i in range(-3, 3 + 1):
+    for i in range(-1, 1 + 1):
         capping.add(
             gdstk.ellipse(
-                (800 * i, -2575),
+                (800 * i, -config.inner_height / 2 + CAPPING_HEIGHT - TAPER - 0.5 * m * (f.a * f.b)),
                 125.0,
                 tolerance=1,
                 layer=SOLDER_MASK.gds_layer[0],
@@ -294,23 +294,35 @@ def make_array_variant(
 
     via = viawire()
     xovers = gdstk.Cell(f"crossovers-v{variant:d}")
+
+    np.random.seed(42)
+    next_xover = 0
+
     XOVER_LENGTH = 56
-    for y in range(-ROWS // 2, ROWS // 2):
-        yposh = y * boxconfig.height + y * STUB_HEIGHT - b.focus_point[1] + boxconfig.height
-        yposv = yposh + b.height - b.box_width - b.coupler_gap - b.coupler_width / 2
-        xovers.add(
-            *via.draw_polys(
-                (-f.a - f.b - f.c / 2, -XOVER_LENGTH / 2 + yposv),
-                (-f.a - f.b - f.c / 2, +XOVER_LENGTH / 2 + yposv),
+    MEAN_SPACE = 4
+    for x in range(0, COLS, 2):
+        i = 0
+        next_xover = 0
+        for y in range(-ROWS // 2, ROWS // 2):
+            yposh = y * boxconfig.height + y * STUB_HEIGHT - b.focus_point[1] + boxconfig.height
+            yposv = yposh + b.height - b.box_width - b.coupler_gap - b.coupler_width / 2
+            x_offset = (x + 1) * boxconfig.width + FEEDLINE_LEFT
+            xovers.add(
+                *via.draw_polys(
+                    (-f.a - f.b - f.c / 2 + x_offset, -XOVER_LENGTH / 2 + yposv),
+                    (-f.a - f.b - f.c / 2 + x_offset, +XOVER_LENGTH / 2 + yposv),
+                )
             )
-        )
-        xovers.add(
-            *via.draw_polys(
-                (+f.a + f.b + f.c / 2, -XOVER_LENGTH / 2 + yposv),
-                (+f.a + f.b + f.c / 2, +XOVER_LENGTH / 2 + yposv),
+            xovers.add(
+                *via.draw_polys(
+                    (+f.a + f.b + f.c / 2 + x_offset, -XOVER_LENGTH / 2 + yposv),
+                    (+f.a + f.b + f.c / 2 + x_offset, +XOVER_LENGTH / 2 + yposv),
+                )
             )
-        )
-        xovers.add(*via.draw_polys((-XOVER_LENGTH / 2, yposh + 25), (+XOVER_LENGTH / 2, yposh + 25)))
+            if (i == next_xover) or (y == -ROWS // 2) or (y == ROWS // 2 - 1):
+                xovers.add(*via.draw_polys((-XOVER_LENGTH / 2 + x_offset, yposh + 25), (+XOVER_LENGTH / 2 + x_offset, yposh + 25)))
+                next_xover += MEAN_SPACE - 1 + np.random.randint(3)
+            i += 1
 
     xovers.add(
         *via.draw_polys(
@@ -324,29 +336,58 @@ def make_array_variant(
             (+XOVER_LENGTH / 2, ARRAY_BOTTOM - CURVATURE_RADIUS - SPACING - CURVATURE_RADIUS),
         )
     )
+    xovers.add(
+        *via.draw_polys(
+            (-CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS - XOVER_LENGTH / 2),
+            (-CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS + XOVER_LENGTH / 2),
+        )
+    )
+    xovers.add(
+        *via.draw_polys(
+            (CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS - XOVER_LENGTH / 2),
+            (CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS + XOVER_LENGTH / 2),
+        )
+    )
+    xovers.add(
+        *via.draw_polys(
+            (-XOVER_LENGTH / 2 + FEEDLINE_LEFT + boxconfig.width, ARRAY_TOP + SPACING),
+            (+XOVER_LENGTH / 2 + FEEDLINE_LEFT + boxconfig.width, ARRAY_TOP + SPACING),
+        )
+    )
+    xovers.add(
+        *via.draw_polys(
+            (-XOVER_LENGTH / 2 + FEEDLINE_RIGHT - boxconfig.width, ARRAY_BOTTOM - SPACING),
+            (+XOVER_LENGTH / 2 + FEEDLINE_RIGHT - boxconfig.width, ARRAY_BOTTOM - SPACING),
+        )
+    )
+    xovers.add(
+        *via.draw_polys(
+            (FEEDLINE_LEFT + boxconfig.width + CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS - XOVER_LENGTH / 2),
+            (FEEDLINE_LEFT + boxconfig.width + CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS + XOVER_LENGTH / 2),
+        )
+    )
+    xovers.add(
+        *via.draw_polys(
+            (FEEDLINE_RIGHT - boxconfig.width - CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS - XOVER_LENGTH / 2),
+            (FEEDLINE_RIGHT - boxconfig.width - CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS + XOVER_LENGTH / 2),
+        )
+    )
 
     for y in [
         ARRAY_BOTTOM - CURVATURE_RADIUS,
-        ARRAY_BOTTOM - CURVATURE_RADIUS - SPACING,
         ARRAY_TOP + CURVATURE_RADIUS,
-        ARRAY_TOP + CURVATURE_RADIUS + SPACING,
     ]:
-        xovers.add(
-            *via.draw_polys(
-                (-CURVATURE_RADIUS, -XOVER_LENGTH / 2 + y),
-                (-CURVATURE_RADIUS, +XOVER_LENGTH / 2 + y),
+        for x in range(0, COLS - 4, 4):
+            x = FEEDLINE_LEFT + 2 * boxconfig.width + boxconfig.width * x
+            x *= np.sign(y)
+            xovers.add(
+                *via.draw_polys(
+                    (-x, -XOVER_LENGTH / 2 + y),
+                    (-x, +XOVER_LENGTH / 2 + y),
+                )
             )
-        )
-        xovers.add(
-            *via.draw_polys(
-                (+CURVATURE_RADIUS, -XOVER_LENGTH / 2 + y),
-                (+CURVATURE_RADIUS, +XOVER_LENGTH / 2 + y),
-            )
-        )
 
-    for x in range(-COLS // 4 + 1, COLS // 4 + 1):
-        feedline.add(gdstk.Reference(xovers, (2 * boxconfig.width * x + x * COLUMN_PAD, 0)))
-        feedline.add(gdstk.Reference(xovers, (2 * boxconfig.width * x + x * COLUMN_PAD, 0)))
+    feedline.add(gdstk.Reference(xovers, (0, 0)))
 
     crosses = []
     for x in [ARRAY_LEFT - boxconfig.width * 3 / 2, ARRAY_RIGHT + boxconfig.width * 3/ 2]:
@@ -376,9 +417,9 @@ def make_array_variant(
     CROSS_OFFSET = 333
     for x in [ARRAY_LEFT - CROSS_OFFSET, ARRAY_RIGHT + CROSS_OFFSET]:
         for y in [boxconfig.height * (ROWS / 2 + 1) + CROSS_OFFSET, -boxconfig.height * (ROWS / 2 + 1) - CROSS_OFFSET]:
-            top.add(gdstk.cross((x, y), 100, 20, *TIN_LL))
-            top.add(gdstk.cross((x, y), 100, 20, *HF))
-            top.add(gdstk.rectangle((x - 50, y - 50), (x + 50, y + 50), *HF_CONTACT))
+            crosses_atanb.append(gdstk.cross((x, y), 100, 20, *TIN_LL))
+            # top.add(gdstk.cross((x, y), 100, 20, *HF))
+            # top.add(gdstk.rectangle((x - 50, y - 50), (x + 50, y + 50), *HF_CONTACT))
             vs = []
             for i, pair in enumerate(
                 [
@@ -393,6 +434,30 @@ def make_array_variant(
                 vs.extend(Vernier(lower_layer=pair[0], upper_layer=pair[1]).draw_polys((x - np.sign(x) * (i + 1.5) * 50, y), 0))
             crosses_atanb.extend([v for v in vs if v.layer == TIN_LL.gds_layer[0] and v.datatype==TIN_LL.gds_layer[1]])
             top.add(*[v for v in vs if not (v.layer == TIN_LL.gds_layer[0] and v.datatype==TIN_LL.gds_layer[1])])
+
+    milo_scale = (config.inner_width / 2 - ARRAY_RIGHT) / 177.8
+    milo = [
+        p.scale(milo_scale).translate(
+            ARRAY_RIGHT, -config.inner_height / 2
+        )
+        for p in gdstk.read_gds("./milo.gds")["TOP"].polygons
+    ]
+    milo = gdstk.boolean(milo, milo, "or", 0.0001, *TIN_LL)
+    crosses_atanb.append(
+        gdstk.rectangle(
+            (ARRAY_RIGHT, -config.inner_height / 2),
+            (config.inner_width / 2, 190.5 * milo_scale - config.inner_height / 2),
+        )
+    )
+    TEXT_SIZE = 48
+    crosses_atanb.extend(
+        gdstk.text(
+            f"U7 TIN/WHF LL v{variant}\n1.5pH/20pH",
+            TEXT_SIZE,
+            (-config.inner_width / 2 + TEXT_SIZE, -config.inner_height / 2 + 2 * TEXT_SIZE),
+        )
+    )
+    top.add(*milo)
 
     top.add(*gdstk.boolean(rects, crosses_atanb + text, "not", 0.0001, *TIN_LL))
     top.add(*crosses_mark)
@@ -409,7 +474,8 @@ def make_array_variant(
                 ((config.outer_width / 2 - config.padring), (config.outer_height / 2 - config.padring)),
                 (-(config.outer_width / 2 - config.padring), (config.outer_height / 2 - config.padring)),
                 (-(config.outer_width / 2 - config.padring), -config.outer_height / 2),
-            ]
+            ],
+            *TIN_LL.gds_layer
         )
     )
     lib.add(xovers)
