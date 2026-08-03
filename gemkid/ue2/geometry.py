@@ -5,11 +5,12 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Optional
 
-from ..ue1.layers import ATA_NB, HF, HF_CONTACT, HF_CONTACT_LIFTOFF, ASI, ASI_EP, SOLDER_MASK
+from ..ue1.layers import ATA_NB, HF, HF_CONTACT, HF_CONTACT_LIFTOFF, ASI, ASI_EP, SOLDER_MASK, MLA_PITCH, MLA_MARK
 from ..layers import DrawingLayer
 
 from .. import mecstyle
 from .. import geometry
+from .array import Vernier
 
 
 def unionize(polys, layer, datatype):
@@ -89,7 +90,7 @@ class ViaWire(mecstyle.ViaWire):
                     *self.liftoff_layer,
                 ),
             ]
-            polys += asi + liftoff
+            # polys += asi + liftoff
         else:
             length = abs(b[1] - a[1])
             asi = [
@@ -140,7 +141,7 @@ class ViaWire(mecstyle.ViaWire):
                     *self.liftoff_layer,
                 ),
             ]
-            polys += asi + liftoff
+            # polys += asi + liftoff
 
         return polys
 
@@ -173,6 +174,9 @@ class InductorConfig(mecstyle.InductorDoubledConfig):
     via_gap: float = 3
     via_layer: DrawingLayer = HF_CONTACT
     litho_vias: Optional[int] = 2
+    asi_layer: Optional[tuple[int, int] | DrawingLayer] = ASI
+    asi_ep_layer: Optional[tuple[int, int] | DrawingLayer] = ASI_EP
+    liftoff_layer: Optional[tuple[int, int] | DrawingLayer] = HF_CONTACT_LIFTOFF
 
     def draw(self, port_offset=0, variation_layer=None, cellcache=...):
         c = super().draw(port_offset, variation_layer, cellcache)
@@ -182,8 +186,8 @@ class InductorConfig(mecstyle.InductorDoubledConfig):
             assert self.via_over is None
             via_over = self.litho_vias * (self.leg_width + self.leg_gap)
         else:
-            assert self.litho_vias is None
-            via_over = self.via_over or 0.0
+            assert self.litho_vias is not None
+            via_over = self.via_over or self.litho_vias * (self.leg_width + self.leg_gap)
         vias = [
             gdstk.rectangle(
                 (
@@ -265,37 +269,69 @@ class InductorConfig(mecstyle.InductorDoubledConfig):
                 )
             vias = gdstk.boolean(vias, cuts, "not", 1e-6, *self.via_layer)
 
+        asi = []
         if self.via_inset * 2 < self.leg_length:
             # TODO: Fit into the rest of the framework
             ASI_PADDING = 1.0
-            asi = [
+            if self.asi_layer is not None:
+                asi.append(
+                    gdstk.rectangle(
+                        (
+                            self.wiring_width * 2
+                            + self.wiring_gap * 2
+                            + self.wiring_extra
+                            + ASI_PADDING
+                            + self.via_inset,
+                            self.wiring_gap
+                            + self.wiring_extra_height
+                            + (self.wiring_width - self.leg_width) / 2
+                            - via_over
+                            + ASI_PADDING,
+                        ),
+                        (
+                            self.wiring_width * 2
+                            + self.wiring_gap * 2
+                            + self.wiring_extra
+                            + self.leg_length
+                            - ASI_PADDING
+                            - self.via_inset,
+                            self.dimensions[1] + via_over - ASI_PADDING,
+                        ),
+                        *self.asi_layer,
+                    )
+                )
+            if self.asi_ep_layer is not None:
+                asi.append(
+                    gdstk.rectangle(
+                        (
+                            self.wiring_width * 2 + self.wiring_gap * 2 + self.wiring_extra + self.via_inset,
+                            self.wiring_gap
+                            + self.wiring_extra_height
+                            + (self.wiring_width - self.leg_width) / 2
+                            - via_over,
+                        ),
+                        (
+                            self.wiring_width * 2
+                            + self.wiring_gap * 2
+                            + self.wiring_extra
+                            + self.leg_length
+                            - self.via_inset,
+                            self.dimensions[1] + via_over,
+                        ),
+                        *self.asi_ep_layer,
+                    ),
+                )
+
+        liftoff = []
+        if self.liftoff_layer is not None:
+            liftoff.extend([
                 gdstk.rectangle(
                     (
                         self.wiring_width * 2
                         + self.wiring_gap * 2
                         + self.wiring_extra
-                        + ASI_PADDING
-                        + self.via_inset,
-                        self.wiring_gap
-                        + self.wiring_extra_height
-                        + (self.wiring_width - self.leg_width) / 2
-                        - via_over
-                        + ASI_PADDING,
-                    ),
-                    (
-                        self.wiring_width * 2
-                        + self.wiring_gap * 2
-                        + self.wiring_extra
-                        + self.leg_length
-                        - ASI_PADDING
-                        - self.via_inset,
-                        self.dimensions[1] + via_over - ASI_PADDING,
-                    ),
-                    *ASI,
-                ),
-                gdstk.rectangle(
-                    (
-                        self.wiring_width * 2 + self.wiring_gap * 2 + self.wiring_extra + self.via_inset,
+                        - self.leg_landing / 2
+                        - self.via_width / 2,
                         self.wiring_gap
                         + self.wiring_extra_height
                         + (self.wiring_width - self.leg_width) / 2
@@ -305,66 +341,39 @@ class InductorConfig(mecstyle.InductorDoubledConfig):
                         self.wiring_width * 2
                         + self.wiring_gap * 2
                         + self.wiring_extra
-                        + self.leg_length
-                        - self.via_inset,
+                        - self.leg_landing / 2
+                        + self.via_width / 2
+                        + self.via_inset,
                         self.dimensions[1] + via_over,
                     ),
-                    *ASI_EP,
+                    *self.liftoff_layer,
                 ),
-            ]
-        else:
-            asi = []
-
-        liftoff = [
-            gdstk.rectangle(
-                (
-                    self.wiring_width * 2
-                    + self.wiring_gap * 2
-                    + self.wiring_extra
-                    - self.leg_landing / 2
-                    - self.via_width / 2,
-                    self.wiring_gap
-                    + self.wiring_extra_height
-                    + (self.wiring_width - self.leg_width) / 2
-                    - via_over,
+                gdstk.rectangle(
+                    (
+                        self.wiring_width * 2
+                        + self.wiring_gap * 2
+                        + self.wiring_extra
+                        + self.leg_landing / 2
+                        - self.via_width / 2
+                        - self.via_inset
+                        + self.leg_length,
+                        self.wiring_gap
+                        + self.wiring_extra_height
+                        + (self.wiring_width - self.leg_width) / 2
+                        - via_over,
+                    ),
+                    (
+                        self.wiring_width * 2
+                        + self.wiring_gap * 2
+                        + self.wiring_extra
+                        + self.leg_landing / 2
+                        + self.via_width / 2
+                        + self.leg_length,
+                        self.dimensions[1] + via_over,
+                    ),
+                    *self.liftoff_layer,
                 ),
-                (
-                    self.wiring_width * 2
-                    + self.wiring_gap * 2
-                    + self.wiring_extra
-                    - self.leg_landing / 2
-                    + self.via_width / 2
-                    + self.via_inset,
-                    self.dimensions[1] + via_over,
-                ),
-                *HF_CONTACT_LIFTOFF,
-            ),
-            gdstk.rectangle(
-                (
-                    self.wiring_width * 2
-                    + self.wiring_gap * 2
-                    + self.wiring_extra
-                    + self.leg_landing / 2
-                    - self.via_width / 2
-                    - self.via_inset
-                    + self.leg_length,
-                    self.wiring_gap
-                    + self.wiring_extra_height
-                    + (self.wiring_width - self.leg_width) / 2
-                    - via_over,
-                ),
-                (
-                    self.wiring_width * 2
-                    + self.wiring_gap * 2
-                    + self.wiring_extra
-                    + self.leg_landing / 2
-                    + self.via_width / 2
-                    + self.leg_length,
-                    self.dimensions[1] + via_over,
-                ),
-                *HF_CONTACT_LIFTOFF,
-            ),
-        ]
+        ])
         mirrorline = (0, self.dimensions[1] / 2), (self.dimensions[0], self.dimensions[1] / 2)
         c.add(
             *[l.mirror(*mirrorline) for l in vias],
@@ -419,10 +428,14 @@ def make_tm_variant(
     dietext,
     variants,
     arrayname="",
+    feedline_mult=22,
+    mla_grid=None
 ):
     top = gdstk.Cell(f"tm4-tm-{arrayname}-v{variant:d}")
     b = boxconfig
     bhqc = boxconfighqc
+    if mla_grid is None:
+        mla_grid = min(b.width, b.height)
 
     np.random.seed(42)
     ks = list(resonators.keys())
@@ -442,8 +455,8 @@ def make_tm_variant(
 
     flstubmini.add(gdstk.rectangle((feedlineconfig().width_half, 0), (b.width, 170), *boxconfig.box_layer))
     flstubmini.add(gdstk.rectangle((-feedlineconfig().width_half, 0), (-b.width, 170), *boxconfig.box_layer))
-    flstub.name = "flstubv{:d}".format(variant)
-    flstubmini.name = "flstubmini{:d}".format(variant)
+    flstub.name = "flstub-{}v{:d}".format(arrayname, variant)
+    flstubmini.name = "flstubmini-{}v{:d}".format(arrayname, variant)
 
     rect_right = gdstk.rectangle((b.width, 0), (2700, 3500))
     rect_right = gdstk.boolean(rect_right, gdstk.rectangle((2700 - 1422.4, 0), (2700, 1524)), "not")
@@ -464,11 +477,11 @@ def make_tm_variant(
             right = bhqc.draw(
                 capacitor_tunable=cap_func(i * 2 + 1), coupler_tunable=coup_func(i * 2 + 1), cellcache={}
             )
-        left.name = "left-wide-cap{}-coup{}-f{:.04f}-v{:d}".format(
-            cap_func(i * 2), coup_func(i * 2), freq_func(i * 2), variant
+        left.name = "left-wide-{}-cap{}-coup{}-f{:.04f}-v{:d}".format(
+            arrayname, cap_func(i * 2), coup_func(i * 2), freq_func(i * 2), variant
         )
-        right.name = "right-wide-cap{}-coup{}-f{:.04f}-v{:d}".format(
-            cap_func(i * 2 + 1), coup_func(i * 2 + 1), freq_func(i * 2 + 1), variant
+        right.name = "right-wide-{}-cap{}-coup{}-f{:.04f}-v{:d}".format(
+            arrayname, cap_func(i * 2 + 1), coup_func(i * 2 + 1), freq_func(i * 2 + 1), variant
         )
 
         if i != 7:
@@ -514,12 +527,38 @@ def make_tm_variant(
                 "not",
             )
 
+    for i in range(-13, 13):
+        for j in range(-5, 21):
+            x = mla_grid * i + b.focus_point[0]
+            y = mla_grid * j + b.focus_point[1]
+            top.add(gdstk.cross((x, y), 32, 4, *MLA_PITCH.gds_layer))
+    crosses = []
+
+    MLA_XY = 11
+    MLA_BOTTOM = -3
+    MLA_TOP = 18
+    for x in [-MLA_XY*mla_grid + b.focus_point[0] - mla_grid, MLA_XY*mla_grid + b.focus_point[0] - mla_grid]:
+        for y in [MLA_BOTTOM*mla_grid + b.focus_point[1], MLA_TOP*mla_grid + b.focus_point[1]]:
+            crosses.extend(Vernier(lower_layer=boxconfig.box_layer).draw_polys((x + 111, y), 0.0))
+            crosses.extend(Vernier(lower_layer=boxconfig.box_layer).draw_polys((x - 111, y), np.pi))
+            crosses.extend(Vernier(lower_layer=boxconfig.box_layer).draw_polys((x, y + 111), np.pi / 2))
+            crosses.extend(Vernier(lower_layer=boxconfig.box_layer).draw_polys((x, y - 111), -np.pi / 2))
+            crosses.append(gdstk.cross((x, y), 74, 20, *boxconfig.box_layer))
+            crosses.append(gdstk.cross((x, y), 72, 18, *MLA_MARK))
+    crosses_gp = [
+        c for c in crosses if c.layer == boxconfig.box_layer.gds_layer[0] and c.datatype == boxconfig.box_layer.gds_layer[1]
+    ]
+    crosses_mark = [
+        c for c in crosses if c.layer == MLA_MARK.gds_layer[0] and c.datatype == MLA_MARK.gds_layer[1]
+    ]
+    top.add(*crosses_mark)
+
     milo = [p.scale(8).translate(2700 - 1422.4, 0) for p in gdstk.read_gds("./milo.gds")["TOP"].polygons]
 
-    endcap = gdstk.Cell("endcap{:d}".format(variant))
+    endcap = gdstk.Cell("endcap-{}-{:d}".format(arrayname, variant))
     ec = gdstk.rectangle((-2700, 0), (2700, 950), *boxconfig.box_layer)
     f = feedlineconfig()
-    m = 22
+    m = feedline_mult
     outline = gdstk.Polygon(
         [
             (-(f.a + f.b), 1000),
@@ -544,22 +583,22 @@ def make_tm_variant(
     outline = gdstk.boolean(ec, outline, "not")
     outline = gdstk.boolean(
         outline,
-        gdstk.text("{} v{:d}".format(dietext, variant), 250, (-2500, 600)),
+        gdstk.text("{} v{:d}".format(dietext, variant), 100, (-2500, 800)),
         "not",
         layer=boxconfig.box_layer.gds_layer[0],
         datatype=boxconfig.box_layer.gds_layer[1],
     )
     endcap.add(*outline)
-    for i in range(-3, 3 + 1):
-        endcap.add(
-            gdstk.ellipse(
-                (800 * i, 500),
-                125.0,
-                tolerance=1,
-                layer=SOLDER_MASK.gds_layer[0],
-                datatype=SOLDER_MASK.gds_layer[1],
-            )
-        )
+    # for i in range(-3, 3 + 1):
+    #     endcap.add(
+    #         gdstk.ellipse(
+    #             (800 * i, 500),
+    #             125.0,
+    #             tolerance=1,
+    #             layer=SOLDER_MASK.gds_layer[0],
+    #             datatype=SOLDER_MASK.gds_layer[1],
+    #         )
+    #     )
 
     surround = gdstk.rectangle((-3000, -950 - 100 - 200), (3000, -950 - 100 - 200 + 6000))
     surround = gdstk.boolean(
@@ -614,71 +653,71 @@ def make_tm_variant(
                         datatype=viawire().via_layer.gds_layer[1],
                     )
                 )
-            top.add(
-                gdstk.rectangle(
-                    (
-                        -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 - 1.5 + inset + 1.5 + 1,
-                        2700 // 2 - 14 + 1,
-                    ),
-                    (
-                        -2700
-                        + 150
-                        + 150
-                        + 200
-                        + 8
-                        + sum(LS[:i])
-                        + i * 32
-                        + 32
-                        + LS[i]
-                        + 1.5
-                        - inset
-                        - 1.5
-                        - 1,
-                        2700 // 2 + 14 - 1,
-                    ),
-                    *viawire().asi_layer,
-                )
-            )
-            top.add(
-                gdstk.rectangle(
-                    (
-                        -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 - 1.5 + inset + 1.5,
-                        2700 // 2 - 14,
-                    ),
-                    (
-                        -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 + LS[i] + 1.5 - inset - 1.5,
-                        2700 // 2 + 14,
-                    ),
-                    *viawire().asi_ep_layer,
-                )
-            )
-            top.add(
-                *gdstk.boolean(
-                    gdstk.rectangle(
-                        (
-                            -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 - 6.5,
-                            2700 // 2 - 14,
-                        ),
-                        (
-                            -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 + LS[i] + 6.5,
-                            2700 // 2 + 14,
-                        ),
-                    ),
-                    gdstk.rectangle(
-                        (
-                            -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 - 1.5 + inset,
-                            2700 // 2 - 15,
-                        ),
-                        (
-                            -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 + LS[i] + 1.5 - inset,
-                            2700 // 2 + 15,
-                        ),
-                    ),
-                    "not",
-                    layer=viawire().liftoff_layer.gds_layer[0],
-                    datatype=viawire().liftoff_layer.gds_layer[1],
-                )
-            )
+            # top.add(
+            #     gdstk.rectangle(
+            #         (
+            #             -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 - 1.5 + inset + 1.5 + 1,
+            #             2700 // 2 - 14 + 1,
+            #         ),
+            #         (
+            #             -2700
+            #             + 150
+            #             + 150
+            #             + 200
+            #             + 8
+            #             + sum(LS[:i])
+            #             + i * 32
+            #             + 32
+            #             + LS[i]
+            #             + 1.5
+            #             - inset
+            #             - 1.5
+            #             - 1,
+            #             2700 // 2 + 14 - 1,
+            #         ),
+            #         *viawire().asi_layer,
+            #     )
+            # )
+            # top.add(
+            #     gdstk.rectangle(
+            #         (
+            #             -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 - 1.5 + inset + 1.5,
+            #             2700 // 2 - 14,
+            #         ),
+            #         (
+            #             -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 + LS[i] + 1.5 - inset - 1.5,
+            #             2700 // 2 + 14,
+            #         ),
+            #         *viawire().asi_ep_layer,
+            #     )
+            # )
+            # top.add(
+            #     *gdstk.boolean(
+            #         gdstk.rectangle(
+            #             (
+            #                 -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 - 6.5,
+            #                 2700 // 2 - 14,
+            #             ),
+            #             (
+            #                 -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 + LS[i] + 6.5,
+            #                 2700 // 2 + 14,
+            #             ),
+            #         ),
+            #         gdstk.rectangle(
+            #             (
+            #                 -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 - 1.5 + inset,
+            #                 2700 // 2 - 15,
+            #             ),
+            #             (
+            #                 -2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 + LS[i] + 1.5 - inset,
+            #                 2700 // 2 + 15,
+            #             ),
+            #         ),
+            #         "not",
+            #         layer=viawire().liftoff_layer.gds_layer[0],
+            #         datatype=viawire().liftoff_layer.gds_layer[1],
+            #     )
+            # )
             top.add(
                 gdstk.rectangle(
                     (-2700 + 150 + 150 + 200 + 8 + sum(LS[:i]) + i * 32 + 32 - 8, 2700 // 2 - 2),
@@ -798,6 +837,8 @@ def make_tm_variant(
             gdstk.rectangle(
                 (-2700 + 200 + 50, 2700 // 2 + max_extent + 64 + 33 + i * (16 + 165)),
                 (-2700 + 200 + 50 + 200, 2700 // 2 + max_extent + 64 + 33 + 165 + i * (16 + 165)),
+                layer=boxconfig.box_layer.gds_layer[0],
+                datatype=boxconfig.box_layer.gds_layer[1],
             )
         )
 
@@ -854,7 +895,7 @@ def make_tm_variant(
         )
     )
     via = viawire(via_length=5, landing_length=8, asi_width=22.2)
-    xovers = gdstk.Cell(f"half_coax_crossovers{variant}")
+    xovers = gdstk.Cell(f"half_coax_crossovers_{arrayname}-{variant}")
     XOVER_LENGTH = 36
     ps = []
     for i in range(160):
@@ -875,18 +916,23 @@ def make_tm_variant(
     xovers.add(*unionize(ps, *viawire().landing_layer))
     xovers.add(*unionize(ps, *viawire().asi_layer))
     xovers.add(*unionize(ps, *viawire().asi_ep_layer))
-    top.add(gdstk.Reference(xovers, (0, 0)))
+    # top.add(gdstk.Reference(xovers, (0, 0)))
 
     top.add(*gdstk.boolean(gold, gold, "or", layer=100))
 
     top.add(*surround)
-    top.add(gdstk.Reference(endcap, (0, -950)))
-    top.add(gdstk.Reference(endcap, (0, 4500 - 50), rotation=np.pi))
+    # top.add(gdstk.Reference(endcap, (0, -950)))
+    # top.add(gdstk.Reference(endcap, (0, 4500 - 50), rotation=np.pi))
 
+    # top.add(gdstk.Reference(endcap, (0, -950)))
+    # top.add(gdstk.Reference(endcap, (0, 4500 - 50), rotation=np.pi))
+    top.add(*gdstk.boolean([p.translate((0, -950)) for p in endcap.polygons], crosses_gp, "not", 0.0001, *boxconfig.box_layer))
+    top.add(*gdstk.boolean([p.rotate(np.pi).translate((0, 3500)) for p in endcap.polygons], crosses_gp, "not", 0.0001, *boxconfig.box_layer))
+    gdstk.boolean(rect_right, crosses_gp, "not")
     lib.add(top)
     lib.add(flstub, flstubmini)
-    lib.add(endcap)
-    lib.add(xovers)
+    # lib.add(endcap)
+    # lib.add(xovers)
     return top
 
 
@@ -894,10 +940,10 @@ if __name__ == "__main__":
     import numpy as np
 
     variants = [
-        (3, 0),
-        (3, 5),
-        (3, 10),
-        (3, 21.5),
+        (3, 0, 2),
+        (3, 5, 2),
+        (3, 10, 2),
+        (3, 21.5, 1),
     ]
     resonators = {
         4.0: {
@@ -970,13 +1016,13 @@ if __name__ == "__main__":
 
     for i in range(4):
         b = BoxConfig(
-            InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1]),
+            InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1], litho_vias=variants[i][2]),
             CapacitorConfig(),
             UEFeedlineConfig(),
         )
 
         bhqc = BoxConfig(
-            InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1]),
+            InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1], litho_vias=variants[i][2]),
             CapacitorConfig(),
             UEFeedlineConfig(),
             double_coupler=False,

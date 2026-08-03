@@ -9,6 +9,7 @@ from ..layers import DrawingLayer
 
 from . import geometry
 from . import array
+from . import geometryllsl
 
 
 @dataclass(eq=True, frozen=True)
@@ -22,13 +23,13 @@ class UEFeedlineConfig(geometry.UEFeedlineConfig):
 
 @dataclass(eq=True, frozen=True)
 class ViaWire(geometry.ViaWire):
-    bridge_width: float = 4
+    bridge_width: float = 8
     bridge_layer: tuple[int, int] | DrawingLayer = HF_LL
     bridge_land: bool = True
-    landing_width: float = 4
+    landing_width: float = 8
     landing_length: float = 18
     landing_layer: tuple[int, int] | DrawingLayer = TIN_LL
-    via_width: float = 3
+    via_width: float = 5
     via_length: float = 15
     via_layer: tuple[int, int] | DrawingLayer = HF_CONTACT
     liftoff_width: float = 5
@@ -103,111 +104,96 @@ if __name__ == "__main__":
     import numpy as np
 
     variants = [
-        (3, 0),
-        (3, 5),
-        (3, 10),
-        (4.75, 21.5),
+        (0, 2),
+        (5, 2),
+        (10, 2),
+        (21.5, 1),
     ]
 
     lib = gdstk.Library("ue2-ll")
     resonators_tm = {
-        4.0: {"coupler_tunable": 0.9523809523809523, "capacitor_tunable": 0.5275590551181102},
-        4.05: {"coupler_tunable": 0.9047619047619047, "capacitor_tunable": 0.5118110236220472},
-        4.1: {"coupler_tunable": 0.873015873015873, "capacitor_tunable": 0.4881889763779528},
-        4.15: {"coupler_tunable": 0.8253968253968254, "capacitor_tunable": 0.47244094488188976},
-        4.2: {"coupler_tunable": 0.7936507936507936, "capacitor_tunable": 0.45669291338582674},
-        4.25: {"coupler_tunable": 0.7619047619047619, "capacitor_tunable": 0.4409448818897638},
-        4.3: {"coupler_tunable": 0.7142857142857142, "capacitor_tunable": 0.4251968503937008},
-        6.1: {"coupler_tunable": 0.1111111111111111, "capacitor_tunable": 0.11811023622047244},
-        6.2: {"coupler_tunable": 0.1111111111111111, "capacitor_tunable": 0.11023622047244094},
-        6.3: {"coupler_tunable": 0.1111111111111111, "capacitor_tunable": 0.10236220472440945},
-        6.4: {"coupler_tunable": 0.1111111111111111, "capacitor_tunable": 0.09448818897637795},
-        7.5: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.031496062992125984},
-        7.625: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.023622047244094488},
-        7.75: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.023622047244094488},
-        7.875: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.015748031496062992},
-        8.0: {"coupler_tunable": 0.06349206349206349, "capacitor_tunable": 0.015748031496062992},
+        4.7: {'capacitor_tunable': 0.8785797683223091,
+          'coupler_tunable': 0.7853595734408289},
+         4.75: {'capacitor_tunable': 0.8538423317734765,
+          'coupler_tunable': 0.753930249811506},
+         4.8: {'capacitor_tunable': 0.827636995610809,
+          'coupler_tunable': 0.7237144027180294},
+         4.85: {'capacitor_tunable': 0.9101123595505618,
+          'coupler_tunable': 0.8253012048192772},
+         4.9: {'capacitor_tunable': 0.7811214183479828,
+          'coupler_tunable': 0.6701082171972915},
+         4.95: {'capacitor_tunable': 0.7579921073376964,
+          'coupler_tunable': 0.6478077360823395},
+         5.0: {'capacitor_tunable': 0.7359964826072745,
+          'coupler_tunable': 0.6219534557402806},
+         6.1: {'capacitor_tunable': 0.3627344955862412,
+          'coupler_tunable': 0.2588709694581718},
+         6.2: {'capacitor_tunable': 0.33646437775522514,
+          'coupler_tunable': 0.235430883763639},
+         6.3: {'capacitor_tunable': 0.31133098076351984,
+          'coupler_tunable': 0.21221627722422443},
+         6.4: {'capacitor_tunable': 0.28746191876459765,
+          'coupler_tunable': 0.18823970852655816},
+         7.5: {'capacitor_tunable': 0.10474007888472624,
+          'coupler_tunable': 0.08753274785087363},
+         7.625: {'capacitor_tunable': 0.090552253757031,
+          'coupler_tunable': 0.08574468059300579},
+         7.75: {'capacitor_tunable': 0.0763728688671114,
+          'coupler_tunable': 0.0826005975215284},
+         7.875: {'capacitor_tunable': 0.06313837733183439,
+          'coupler_tunable': 0.08092108132754271},
+         8.0: {'capacitor_tunable': 0.05159835719223678,
+          'coupler_tunable': 0.07814335486313163}
     }
 
-    resonators_array = {
-        4.0: {"coupler_tunable": 0.9523809523809523, "capacitor_tunable": 0.5275590551181102},
-        4.06: {"coupler_tunable": 0.9047619047619047, "capacitor_tunable": 0.5039370078740157},
-        4.12: {"coupler_tunable": 0.8571428571428571, "capacitor_tunable": 0.48031496062992124},
-        4.18: {"coupler_tunable": 0.8095238095238095, "capacitor_tunable": 0.4645669291338583},
-        4.24: {"coupler_tunable": 0.7619047619047619, "capacitor_tunable": 0.44881889763779526},
-        4.3: {"coupler_tunable": 0.7142857142857142, "capacitor_tunable": 0.4251968503937008},
-        5.0: {"coupler_tunable": 0.2857142857142857, "capacitor_tunable": 0.25196850393700787},
-        5.1: {"coupler_tunable": 0.20634920634920634, "capacitor_tunable": 0.23622047244094488},
-        5.2: {"coupler_tunable": 0.1746031746031746, "capacitor_tunable": 0.2204724409448819},
-        5.3: {"coupler_tunable": 0.1746031746031746, "capacitor_tunable": 0.2047244094488189},
-        5.4: {"coupler_tunable": 0.15873015873015872, "capacitor_tunable": 0.1889763779527559},
-        5.5: {"coupler_tunable": 0.15873015873015872, "capacitor_tunable": 0.1732283464566929},
-        5.6: {"coupler_tunable": 0.14285714285714285, "capacitor_tunable": 0.1653543307086614},
-        5.7: {"coupler_tunable": 0.14285714285714285, "capacitor_tunable": 0.15748031496062992},
-        6.0: {"coupler_tunable": 0.12698412698412698, "capacitor_tunable": 0.12598425196850394},
-        6.11: {"coupler_tunable": 0.1111111111111111, "capacitor_tunable": 0.11811023622047244},
-        6.22: {"coupler_tunable": 0.1111111111111111, "capacitor_tunable": 0.10236220472440945},
-        6.33: {"coupler_tunable": 0.1111111111111111, "capacitor_tunable": 0.09448818897637795},
-        6.44: {"coupler_tunable": 0.1111111111111111, "capacitor_tunable": 0.08661417322834646},
-        6.55: {"coupler_tunable": 0.1111111111111111, "capacitor_tunable": 0.07874015748031496},
-        6.66: {"coupler_tunable": 0.09523809523809523, "capacitor_tunable": 0.07086614173228346},
-        6.7700000000000005: {
-            "coupler_tunable": 0.09523809523809523,
-            "capacitor_tunable": 0.07086614173228346,
-        },
-        6.88: {"coupler_tunable": 0.09523809523809523, "capacitor_tunable": 0.06299212598425197},
-        6.99: {"coupler_tunable": 0.09523809523809523, "capacitor_tunable": 0.05511811023622047},
-        7.4: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.031496062992125984},
-        7.45: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.031496062992125984},
-        7.5: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.031496062992125984},
-        7.550000000000001: {
-            "coupler_tunable": 0.07936507936507936,
-            "capacitor_tunable": 0.031496062992125984,
-        },
-        7.6000000000000005: {
-            "coupler_tunable": 0.07936507936507936,
-            "capacitor_tunable": 0.023622047244094488,
-        },
-        7.65: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.023622047244094488},
-        7.7: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.023622047244094488},
-        7.75: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.023622047244094488},
-        7.8: {"coupler_tunable": 0.07936507936507936, "capacitor_tunable": 0.015748031496062992},
-        7.8500000000000005: {
-            "coupler_tunable": 0.07936507936507936,
-            "capacitor_tunable": 0.015748031496062992,
-        },
-        7.9: {"coupler_tunable": 0.06349206349206349, "capacitor_tunable": 0.015748031496062992},
-        7.95: {"coupler_tunable": 0.06349206349206349, "capacitor_tunable": 0.015748031496062992},
-    }
-
-    for i in range(4):
-        b = BoxConfig(
-            InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1]),
-            CapacitorConfig(),
-            UEFeedlineConfig(),
-            box_width_extra=10.5
-        )
-
-        bhqc = BoxConfig(
-            InductorConfig(via_gap=variants[i][0], via_inset=variants[i][1]),
-            CapacitorConfig(),
-            UEFeedlineConfig(),
-            double_coupler=False,
-            extended_coupler_pullback=True,
-            box_width_extra=10.5
-        )
-        geometry.make_tm_variant(
-            lib,
-            i,
-            resonators_tm,
-            b,
-            bhqc,
-            UEFeedlineConfig,
-            ViaWire,
-            "UE2 LL 20pH",
-            variants,
-            "ll-20ph",
-        )
-        array.make_array_variant(lib, i, resonators_array, b, UEFeedlineConfig, ViaWire, "ll-20ph")
+    for g, igs in enumerate([
+        {"leg_gap": 0.75, "via_gap": 1.75, "wiring_gap": 1.75, "asi_ep_layer": None, "asi_layer": None, "liftoff_layer": None},
+        {"leg_gap": 1.00, "via_gap": 2.00, "wiring_gap": 2.00, "asi_ep_layer": None, "asi_layer": None, "liftoff_layer": None},
+        {"leg_gap": 1.50, "via_gap": 2.50, "wiring_gap": 2.50, "asi_ep_layer": None, "asi_layer": None, "liftoff_layer": None},
+        {"leg_gap": 1.50, "via_gap": 2.50, "wiring_gap": 2.50, "asi_ep_layer": None, "asi_layer": None, "liftoff_layer": HF_CONTACT},
+        {"leg_gap": 2.50, "via_gap": 3.50, "wiring_gap": 3.50, "asi_ep_layer": None, "asi_layer": None, "liftoff_layer": None},
+    ]):
+        for i in range(4):
+            text = f"leg_gap: {igs['leg_gap']:1.2f} via_inset: {variants[i][0]:02.1f}"
+            if g == 3:
+                text += " bar"
+            if i == 3 and g == 3:
+                continue
+            if i == 3:
+                igs["via_gap"] = 0.0
+            b = BoxConfig(
+                InductorConfig(via_inset=variants[i][0], litho_vias=variants[i][1], **igs),
+                CapacitorConfig(),
+                UEFeedlineConfig(),
+                box_width_extra=10.5 if g != 4 else 0
+            )
+            bhqc = BoxConfig(
+                InductorConfig(via_inset=variants[i][0], litho_vias=variants[i][1], **igs),
+                CapacitorConfig(),
+                UEFeedlineConfig(),
+                double_coupler=False,
+                extended_coupler_pullback=True,
+                box_width_extra=10.5
+            )
+            barr = BoxConfig(
+                InductorConfig(via_inset=variants[i][0], litho_vias=variants[i][1], **igs),
+                CapacitorConfig(),
+                UEFeedlineConfig(),
+                box_width_extra=10.5,
+            )
+            big_array = array.ArrayConfig()
+            mini_array = array.ArrayConfig(
+                feedlines=1,
+                dimensions=(2, 8),
+                outer_width = 6000,
+                outer_height = 6000,
+                inner_width = 5400,
+                inner_height = 5400,
+                padring = 200
+            )
+            geometry.make_tm_variant(lib, i, resonators_tm, b, bhqc, UEFeedlineConfig, ViaWire, f"UE2 LL 18pH g{g}\n{text}", variants, f"ll-18ph-g{g}")
+            if g == 1 and i == 3:
+                array.make_array_variant(lib, i, resonators_tm, barr, UEFeedlineConfig, ViaWire, f"ll-18ph-g{g}")
+            # array.make_array_variant(lib, i, resonators_array, b, UEFeedlineConfig, ViaWire, "ll-ma-20ph", mini_array)
 
     lib.write_gds("ue2-ll.gds")

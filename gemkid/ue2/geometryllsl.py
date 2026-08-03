@@ -4,7 +4,7 @@ import gdstk
 from dataclasses import dataclass
 from typing import Optional
 
-from ..ue1.layers import HF_LL, HF_GP_LL, HF_CONTACT
+from ..ue1.layers import HF_LL, ASI, HF_CONTACT, MLA_PITCH, MLA_MARK
 from ..layers import DrawingLayer
 
 from . import geometry
@@ -16,8 +16,8 @@ class UEFeedlineConfig(geometry.UEFeedlineConfig):
     a: float = 37
     b: float = 1
     c: float = 30
-    feed_layer: tuple[int, int] | DrawingLayer = HF_GP_LL
-    ground_layer: tuple[int, int] | DrawingLayer = HF_GP_LL
+    feed_layer: tuple[int, int] | DrawingLayer = HF_LL
+    ground_layer: tuple[int, int] | DrawingLayer = HF_LL
 
 
 @dataclass(eq=True, frozen=True)
@@ -27,7 +27,7 @@ class ViaWire(geometry.ViaWire):
     bridge_land: bool = True
     landing_width: float = 4
     landing_length: float = 18
-    landing_layer: tuple[int, int] | DrawingLayer = HF_GP_LL
+    landing_layer: tuple[int, int] | DrawingLayer = HF_LL
     via_width: float = 3
     via_length: float = 15
     via_layer: tuple[int, int] | DrawingLayer = HF_CONTACT
@@ -45,7 +45,7 @@ class InductorConfig(geometry.InductorConfig):
     leg_layer: DrawingLayer = HF_LL
     wiring_width: float = 4.0
     wiring_gap: float = 2.0
-    wiring_layer: DrawingLayer = HF_GP_LL
+    wiring_layer: DrawingLayer = HF_LL
     wiring_extra: float = 8.0
     wiring_extra_height: float = 10.0
     via_over: Optional[float] = None
@@ -54,6 +54,8 @@ class InductorConfig(geometry.InductorConfig):
     via_gap: float = 3
     via_layer: DrawingLayer = HF_CONTACT
     litho_vias: Optional[int] = 2
+    liftoff_layer: Optional[DrawingLayer] = None
+    asi_ep_layer: Optional[DrawingLayer] = None
 
 
 @dataclass(eq=True, frozen=True)
@@ -63,9 +65,9 @@ class CapacitorConfig(geometry.CapacitorConfig):
     leg_length: tuple[float, float] = (350 - 24, 200 - 24)
     leg_width: float = 1
     leg_landing: float = 0.0
-    leg_layer: DrawingLayer = HF_GP_LL
+    leg_layer: DrawingLayer = HF_LL
     wiring_width: float = 16
-    wiring_layer: DrawingLayer = HF_GP_LL
+    wiring_layer: DrawingLayer = HF_LL
     extra_height: float = 0.0
 
 
@@ -73,17 +75,17 @@ class CapacitorConfig(geometry.CapacitorConfig):
 class BoxConfig(geometry.BoxConfig):
     inductor: Optional[InductorConfig]
     capacitor: Optional[CapacitorConfig]
-    feedline: UEFeedlineConfig = UEFeedlineConfig(feed_layer=HF_GP_LL, ground_layer=HF_GP_LL)
+    feedline: UEFeedlineConfig = UEFeedlineConfig(feed_layer=HF_LL, ground_layer=HF_LL)
     coupler_width: float = 2.0
     coupler_gap: float = 4.0
     coupler_fill: bool = False
-    coupler_layer: DrawingLayer = HF_GP_LL
+    coupler_layer: DrawingLayer = HF_LL
     coupler_via: Optional[geometry.mecstyle.ViaWire] = (
         None  # mecstyle.ViaWire(2.0, HF, False, 2.0, 2.0, HF_GP_LL, 2.0, 2.0, HF_CONTACT)
     )
     box_width: float = 2.0
     box_gap: float = 1.0
-    box_layer: DrawingLayer = HF_GP_LL
+    box_layer: DrawingLayer = HF_LL
     width: float = 444
     height: float = 222
     extended_coupler_pullback: bool = False
@@ -328,9 +330,16 @@ if __name__ == "__main__":
             double_coupler=False,
             extended_coupler_pullback=True,
         )
-        geometry.make_tm_variant(
-            lib, i, resonators_tm, b, bhqc, UEFeedlineConfig, ViaWire, "UE2 LL SL 20pH", variants, "ll-sl-20ph"
+        thingy = geometry.make_tm_variant(
+            gdstk.Library(), i, resonators_tm, b, bhqc, UEFeedlineConfig, ViaWire, f"UE2 SL 18pH\nleg_gap: {2.0:2.2f} via_inset: {variants[i][1]:2.1f}", variants, "ll-sl-18ph",
+            feedline_mult=6,
+            mla_grid=222
         )
-        array.make_array_variant(lib, i, resonators_array, b, UEFeedlineConfig, ViaWire, "ll-sl-20ph")
+        thingy.flatten()
+        cell = gdstk.Cell(thingy.name)
+        for l in [b.box_layer, b.inductor.leg_layer, MLA_MARK, MLA_PITCH]:
+            cell.add(*[p for p in thingy.polygons if p.layer == l.gds_layer[0] and p.datatype == l.gds_layer[1]])
+        cell.add(*gdstk.boolean(gdstk.rectangle(*cell.bounding_box()), [p for p in thingy.polygons if p.layer == ASI.gds_layer[0] and p.datatype == ASI.gds_layer[1]], "not", 0.001, *HF_CONTACT))
+        lib.add(cell)
 
     lib.write_gds("ue2-ll-sl.gds")

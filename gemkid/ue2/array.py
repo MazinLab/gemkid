@@ -3,11 +3,8 @@ from dataclasses import dataclass
 import gdstk
 
 from ..ue1.layers import (
-    ASI,
-    ASI_EP,
     HF,
-    HF_CONTACT,
-    HF_CONTACT_LIFTOFF,
+    HF_LL,
     MLA_MARK,
     MLA_PITCH,
     TIN_LL,
@@ -87,11 +84,12 @@ class ArrayConfig:
     column_pad: float | int = 0
     row_pad: float | int = 0
     feedlines: int = 8
-    inner_width = 25900
-    inner_height = 25900
-    outer_width = 26000
-    outer_height = 26000
-    padring = 25
+    inner_width: float | int = 25900
+    inner_height: float | int = 25900
+    outer_width: float | int = 26000
+    outer_height: float | int = 26000
+    padring: float | int = 25
+    mla_alignment: tuple[int, int] = (14 * 4 + 2, 53)
 
 
 def make_array_variant(
@@ -131,21 +129,22 @@ def make_array_variant(
         for c in range(COLS * config.feedlines + 4):
             x = ARRAY_LEFT + (c - 2) * boxconfig.width + boxconfig.width / 2
             y = ARRAY_BOTTOM + (r - 1) * boxconfig.height + b.focus_point[1]
-            top.add(gdstk.cross((x, y), 32, 4, 100, 0))
+            top.add(gdstk.cross((x, y), 32, 4, *MLA_PITCH.gds_layer))
 
     assert COLS % 2 == 0
     assert ROWS % 2 == 0
 
-    feedline = gdstk.Cell(f"array-feedline-v{variant}")
+    feedline = gdstk.Cell(f"array-feedline-{arrayname}-v{variant}")
     lib.add(feedline)
     text = []
     # text_origin = (boxconfig.width * -12, boxconfig.height * -10)
+    design = np.load("./u7_design_final.npz")
     for i in range(0, COLS, 2):
         for j in range(ROWS):
-            left = b.draw(**(resonators[freqs[i][j]]), cellcache={})
-            right = b.draw(**(resonators[freqs[i + 1][j]]), cellcache={})
-            left.name = f"left-r{j}c{i}-v{variant}"
-            right.name = f"right-r{j}c{i}-v{variant}"
+            left = b.draw(capacitor_tunable=design["caps"][i+1,j], coupler_tunable=design["coups"][i+1,j], cellcache={})
+            right = b.draw(capacitor_tunable=design["caps"][i,j], coupler_tunable=design["coups"][i,j], cellcache={})
+            left.name = f"left-r{j}c{i}-{arrayname}-v{variant}-cap{design['caps'][i+1,j]}"
+            right.name = f"right-r{j}c{i}-{arrayname}-v{variant}-cap{design['caps'][i,j]}"
             feedline.add(
                 gdstk.Reference(
                     left,
@@ -184,41 +183,53 @@ def make_array_variant(
     SPACING = 100
     WIRING_HEIGHT = CURVATURE_RADIUS * 2 + SPACING
 
-    wiring = gdstk.Cell(f"Wiring-v{variant:d}")
+    wiring = gdstk.Cell(f"wiring-{arrayname}-v{variant:d}")
     paths = []
-    for i in range(0, COLS - 2, 4):
+    if COLS > 2:
+        for i in range(0, COLS - 2, 4):
+            p = gdstk.RobustPath(
+                (FEEDLINE_LEFT + i * boxconfig.width + boxconfig.width + i * COLUMN_PAD, WIRING_HEIGHT / 2),
+                [feedlineconfig().b, feedlineconfig.b],
+                [
+                    feedlineconfig().a + feedlineconfig().b / 2,
+                    -feedlineconfig().a - feedlineconfig().b / 2,
+                ],
+            )
+            p.arc(CURVATURE_RADIUS, -np.pi, -np.pi / 2)
+            p.horizontal(boxconfig.width * 2 + COLUMN_PAD - CURVATURE_RADIUS * 2, relative=True)
+            p.arc(CURVATURE_RADIUS, -np.pi / 2, 0)
+            paths.append(p)
         p = gdstk.RobustPath(
-            (FEEDLINE_LEFT + i * boxconfig.width + boxconfig.width + i * COLUMN_PAD, WIRING_HEIGHT / 2),
+            (0, -WIRING_HEIGHT / 2),
             [feedlineconfig().b, feedlineconfig.b],
             [
                 feedlineconfig().a + feedlineconfig().b / 2,
                 -feedlineconfig().a - feedlineconfig().b / 2,
             ],
         )
-        p.arc(CURVATURE_RADIUS, -np.pi, -np.pi / 2)
-        p.horizontal(boxconfig.width * 2 + COLUMN_PAD - CURVATURE_RADIUS * 2, relative=True)
+        p.arc(CURVATURE_RADIUS, -np.pi, -np.pi * 3 / 2)
+        p.horizontal(FEEDLINE_RIGHT - boxconfig.width - CURVATURE_RADIUS)
         p.arc(CURVATURE_RADIUS, -np.pi / 2, 0)
+        p.vertical(SPACING + CURVATURE_RADIUS)
         paths.append(p)
-    p = gdstk.RobustPath(
-        (0, -WIRING_HEIGHT / 2),
-        [feedlineconfig().b, feedlineconfig.b],
-        [
-            feedlineconfig().a + feedlineconfig().b / 2,
-            -feedlineconfig().a - feedlineconfig().b / 2,
-        ],
-    )
-    p.arc(CURVATURE_RADIUS, -np.pi, -np.pi * 3 / 2)
-    p.horizontal(FEEDLINE_RIGHT - boxconfig.width - CURVATURE_RADIUS)
-    p.arc(CURVATURE_RADIUS, -np.pi / 2, 0)
-    p.vertical(SPACING + CURVATURE_RADIUS)
-    paths.append(p)
+    else:
+        p = gdstk.RobustPath(
+            (FEEDLINE_LEFT + boxconfig.width, -WIRING_HEIGHT / 2),
+            [feedlineconfig().b, feedlineconfig.b],
+            [
+                feedlineconfig().a + feedlineconfig().b / 2,
+                -feedlineconfig().a - feedlineconfig().b / 2,
+            ],
+        )
+        p.vertical(CURVATURE_RADIUS + SPACING + CURVATURE_RADIUS, relative=True)
+        paths.append(p)
 
     ARRAY_WIRED_BOTTOM = ARRAY_BOTTOM - WIRING_HEIGHT
     ARRAY_WIRED_TOP = ARRAY_TOP + WIRING_HEIGHT
     rect = gdstk.rectangle((FEEDLINE_LEFT, -WIRING_HEIGHT / 2), (FEEDLINE_RIGHT, WIRING_HEIGHT / 2))
     wiring.add(*gdstk.boolean(rect, paths, "not", 0.0001, *TIN_LL))
 
-    capping = gdstk.Cell(f"Bond Cap-v{variant:d}")
+    capping = gdstk.Cell(f"bond-cap-{arrayname}-v{variant:d}")
     m = 22
     f = feedlineconfig()
     CAPPING_HEIGHT = 520
@@ -293,7 +304,7 @@ def make_array_variant(
     feedline.add(*gdstk.boolean(prect, p, "not", 0.0001, *TIN_LL))
 
     via = viawire()
-    xovers = gdstk.Cell(f"crossovers-v{variant:d}")
+    xovers = gdstk.Cell(f"crossovers-{arrayname}-v{variant:d}")
 
     np.random.seed(42)
     next_xover = 0
@@ -320,58 +331,59 @@ def make_array_variant(
                 )
             )
             if (i == next_xover) or (y == -ROWS // 2) or (y == ROWS // 2 - 1):
-                xovers.add(*via.draw_polys((-XOVER_LENGTH / 2 + x_offset, yposh + 25), (+XOVER_LENGTH / 2 + x_offset, yposh + 25)))
+                xovers.add(*via.draw_polys((-XOVER_LENGTH / 2 + x_offset, yposh + 35), (+XOVER_LENGTH / 2 + x_offset, yposh + 35)))
                 next_xover += MEAN_SPACE - 1 + np.random.randint(3)
             i += 1
 
-    xovers.add(
-        *via.draw_polys(
-            (-XOVER_LENGTH / 2, ARRAY_TOP + CURVATURE_RADIUS + SPACING + CURVATURE_RADIUS),
-            (+XOVER_LENGTH / 2, ARRAY_TOP + CURVATURE_RADIUS + SPACING + CURVATURE_RADIUS),
+    if COLS > 2:
+        xovers.add(
+            *via.draw_polys(
+                (-XOVER_LENGTH / 2, ARRAY_TOP + CURVATURE_RADIUS + SPACING + CURVATURE_RADIUS),
+                (+XOVER_LENGTH / 2, ARRAY_TOP + CURVATURE_RADIUS + SPACING + CURVATURE_RADIUS),
+            )
         )
-    )
-    xovers.add(
-        *via.draw_polys(
-            (-XOVER_LENGTH / 2, ARRAY_BOTTOM - CURVATURE_RADIUS - SPACING - CURVATURE_RADIUS),
-            (+XOVER_LENGTH / 2, ARRAY_BOTTOM - CURVATURE_RADIUS - SPACING - CURVATURE_RADIUS),
+        xovers.add(
+            *via.draw_polys(
+                (-XOVER_LENGTH / 2, ARRAY_BOTTOM - CURVATURE_RADIUS - SPACING - CURVATURE_RADIUS),
+                (+XOVER_LENGTH / 2, ARRAY_BOTTOM - CURVATURE_RADIUS - SPACING - CURVATURE_RADIUS),
+            )
         )
-    )
-    xovers.add(
-        *via.draw_polys(
-            (-CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS - XOVER_LENGTH / 2),
-            (-CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS + XOVER_LENGTH / 2),
+        xovers.add(
+            *via.draw_polys(
+                (-CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS - XOVER_LENGTH / 2),
+                (-CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS + XOVER_LENGTH / 2),
+            )
         )
-    )
-    xovers.add(
-        *via.draw_polys(
-            (CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS - XOVER_LENGTH / 2),
-            (CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS + XOVER_LENGTH / 2),
+        xovers.add(
+            *via.draw_polys(
+                (CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS - XOVER_LENGTH / 2),
+                (CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS + XOVER_LENGTH / 2),
+            )
         )
-    )
-    xovers.add(
-        *via.draw_polys(
-            (-XOVER_LENGTH / 2 + FEEDLINE_LEFT + boxconfig.width, ARRAY_TOP + SPACING),
-            (+XOVER_LENGTH / 2 + FEEDLINE_LEFT + boxconfig.width, ARRAY_TOP + SPACING),
+        xovers.add(
+            *via.draw_polys(
+                (-XOVER_LENGTH / 2 + FEEDLINE_LEFT + boxconfig.width, ARRAY_TOP + SPACING),
+                (+XOVER_LENGTH / 2 + FEEDLINE_LEFT + boxconfig.width, ARRAY_TOP + SPACING),
+            )
         )
-    )
-    xovers.add(
-        *via.draw_polys(
-            (-XOVER_LENGTH / 2 + FEEDLINE_RIGHT - boxconfig.width, ARRAY_BOTTOM - SPACING),
-            (+XOVER_LENGTH / 2 + FEEDLINE_RIGHT - boxconfig.width, ARRAY_BOTTOM - SPACING),
+        xovers.add(
+            *via.draw_polys(
+                (-XOVER_LENGTH / 2 + FEEDLINE_RIGHT - boxconfig.width, ARRAY_BOTTOM - SPACING),
+                (+XOVER_LENGTH / 2 + FEEDLINE_RIGHT - boxconfig.width, ARRAY_BOTTOM - SPACING),
+            )
         )
-    )
-    xovers.add(
-        *via.draw_polys(
-            (FEEDLINE_LEFT + boxconfig.width + CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS - XOVER_LENGTH / 2),
-            (FEEDLINE_LEFT + boxconfig.width + CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS + XOVER_LENGTH / 2),
+        xovers.add(
+            *via.draw_polys(
+                (FEEDLINE_LEFT + boxconfig.width + CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS - XOVER_LENGTH / 2),
+                (FEEDLINE_LEFT + boxconfig.width + CURVATURE_RADIUS, ARRAY_TOP + SPACING + CURVATURE_RADIUS + XOVER_LENGTH / 2),
+            )
         )
-    )
-    xovers.add(
-        *via.draw_polys(
-            (FEEDLINE_RIGHT - boxconfig.width - CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS - XOVER_LENGTH / 2),
-            (FEEDLINE_RIGHT - boxconfig.width - CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS + XOVER_LENGTH / 2),
+        xovers.add(
+            *via.draw_polys(
+                (FEEDLINE_RIGHT - boxconfig.width - CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS - XOVER_LENGTH / 2),
+                (FEEDLINE_RIGHT - boxconfig.width - CURVATURE_RADIUS, ARRAY_BOTTOM - SPACING - CURVATURE_RADIUS + XOVER_LENGTH / 2),
+            )
         )
-    )
 
     for y in [
         ARRAY_BOTTOM - CURVATURE_RADIUS,
@@ -390,8 +402,8 @@ def make_array_variant(
     feedline.add(gdstk.Reference(xovers, (0, 0)))
 
     crosses = []
-    for x in [ARRAY_LEFT - boxconfig.width * 3 / 2, ARRAY_RIGHT + boxconfig.width * 3/ 2]:
-        for y in [boxconfig.height * (ROWS / 2 - 1), -boxconfig.height * (ROWS / 2 - 1)]:
+    for x in [-config.mla_alignment[0]*boxconfig.width + boxconfig.width / 2, config.mla_alignment[0]*boxconfig.width - boxconfig.width / 2]:
+        for y in [-config.mla_alignment[1]*boxconfig.height, config.mla_alignment[1]*boxconfig.height + boxconfig.height]:
             crosses.extend(Vernier().draw_polys((x + 111, y), 0.0))
             crosses.extend(Vernier().draw_polys((x - 111, y), np.pi))
             crosses.extend(Vernier().draw_polys((x, y + 111), np.pi / 2))
@@ -417,19 +429,11 @@ def make_array_variant(
     CROSS_OFFSET = 333
     for x in [ARRAY_LEFT - CROSS_OFFSET, ARRAY_RIGHT + CROSS_OFFSET]:
         for y in [boxconfig.height * (ROWS / 2 + 1) + CROSS_OFFSET, -boxconfig.height * (ROWS / 2 + 1) - CROSS_OFFSET]:
-            crosses_atanb.append(gdstk.cross((x, y), 100, 20, *TIN_LL))
-            # top.add(gdstk.cross((x, y), 100, 20, *HF))
-            # top.add(gdstk.rectangle((x - 50, y - 50), (x + 50, y + 50), *HF_CONTACT))
+            crosses_atanb.append(gdstk.cross((x, y), 100, 15, *TIN_LL))
             vs = []
-            for i, pair in enumerate(
-                [
-                    (TIN_LL, HF),
-                    (TIN_LL, HF_CONTACT),
-                    (TIN_LL, HF_CONTACT_LIFTOFF),
-                    (TIN_LL, ASI),
-                    (TIN_LL, ASI_EP),
-                ]
-            ):
+            for i, pair in enumerate([
+                (TIN_LL, HF_LL),
+            ]):
                 vs.extend(Vernier(lower_layer=pair[0], upper_layer=pair[1]).draw_polys((x, y - np.sign(y) * (i + 1.5) * 50), np.pi/2))
                 vs.extend(Vernier(lower_layer=pair[0], upper_layer=pair[1]).draw_polys((x - np.sign(x) * (i + 1.5) * 50, y), 0))
             crosses_atanb.extend([v for v in vs if v.layer == TIN_LL.gds_layer[0] and v.datatype==TIN_LL.gds_layer[1]])
@@ -579,7 +583,7 @@ if __name__ == "__main__":
             "coupler_tunable": 0.031746031746031744,
             "capacitor_tunable": 0.11023622047244094,
         },
-        6.7700000000000005: {
+        6.77: {
             "coupler_tunable": 0.047619047619047616,
             "capacitor_tunable": 0.09448818897637795,
         },
@@ -603,11 +607,11 @@ if __name__ == "__main__":
             "coupler_tunable": 0.031746031746031744,
             "capacitor_tunable": 0.031496062992125984,
         },
-        7.550000000000001: {
+        7.55: {
             "coupler_tunable": 0.031746031746031744,
             "capacitor_tunable": 0.023622047244094488,
         },
-        7.6000000000000005: {
+        7.6: {
             "coupler_tunable": 0.031746031746031744,
             "capacitor_tunable": 0.023622047244094488,
         },
@@ -627,7 +631,7 @@ if __name__ == "__main__":
             "coupler_tunable": 0.031746031746031744,
             "capacitor_tunable": 0.007874015748031496,
         },
-        7.8500000000000005: {
+        7.85: {
             "coupler_tunable": 0.031746031746031744,
             "capacitor_tunable": 0.007874015748031496,
         },
