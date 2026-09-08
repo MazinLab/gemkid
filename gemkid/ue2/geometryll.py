@@ -192,7 +192,7 @@ if __name__ == "__main__":
                 padring = 200
             )
             geometry.make_tm_variant(lib, i, resonators_tm, b, bhqc, UEFeedlineConfig, ViaWire, f"UE2 LL 18pH g{g}\n{text}", variants, f"ll-18ph-g{g}")
-            if g == 1 and i == 3:
+            if g == 1 and (i == 3 or i == 1):
                 array.make_array_variant(lib, i, resonators_tm, barr, UEFeedlineConfig, ViaWire, f"ll-18ph-g{g}")
             # array.make_array_variant(lib, i, resonators_array, b, UEFeedlineConfig, ViaWire, "ll-ma-20ph", mini_array)
 
