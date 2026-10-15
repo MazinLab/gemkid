@@ -31,7 +31,7 @@ dependencies = [
 [project.optional-dependencies]
 simulation = [
   "pysonnet@git+https://github.com/ld-cd/pysonnet.git",
-  "loopfit@git+https://github.com/zobristnicholas/loopfit.git"
+  "loopfit@git+https://github.com/ld-cd/loopfit.git"
 ]
 
 [tool.setuptools]

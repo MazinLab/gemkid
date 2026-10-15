@@ -7,6 +7,8 @@ HF_GP = layers.DrawingLayer((0, 1), "Hf_Groundplane")
 HF_GP_LL = layers.DrawingLayer((0, 2), "Hf_Groundplane_Lincoln_Labs")
 TIN_LL = layers.DrawingLayer((10, 0), "TiN_Lincoln_Labs")
 HF = layers.DrawingLayer((1, 0), "Hf_Bridge")
+HFTA = layers.DrawingLayer((2, 0), "HfTa")
+
 HF_LL = layers.DrawingLayer((30, 0), "Hf_Bridge_Lincoln_Labs")
 HF_CONTACT = layers.DrawingLayer((20, 0), "Hf_Contact")
 HF_CONTACT_LIFTOFF = layers.DrawingLayer((3, 0), "Hf_Contact_Liftoff")
@@ -22,6 +24,7 @@ HF_GP_SONNET = SonnetMetalLayer((0, 1), "hf_gp", 0, SonnetPlanarGeneral(1e-7, 0,
 HF_GP_LL_SONNET = SonnetMetalLayer((0, 2), "hf_gp_ll", 0, SonnetPlanarGeneral(1e-7, 0, 0, 20.0), 200.0)
 TIN_LL_SONNET = SonnetMetalLayer((0, 3), "tin_ll", 0, SonnetPlanarGeneral(1e-7, 0, 0, 1.5), 105.0)
 HF_SONNET = SonnetMetalLayer((1, 0), "hf", 0, SonnetPlanarGeneral(1e-7, 0, 0, 8.0), 200.0)
+HFTA_SONNET = SonnetMetalLayer((2, 0), "hfta", 0, SonnetPlanarGeneral(1e-7, 0, 0, 20.0), 80.0)
 HF_LL_SONNET = SonnetMetalLayer((1, 1), "hf_ll", 0, SonnetPlanarGeneral(1e-7, 0, 0, 20.0), 200.0)
 HF_VAR_SONNET = SonnetMetalLayer((1, 1), "hf_var", 0, SonnetPlanarGeneral(1e-7, 0, 0, 200.0), 200.0)
 TI_GOLD_SONNET = SonnetMetalLayer((99, 0), "tiau", 1, SonnetPlanarGeneral(0.1, 0, 0, 0), 100.0)
@@ -31,6 +34,7 @@ HF_GP_SONNET_3D = SonnetMetalLayer((0, 1), "hf_gp", 1, SonnetPlanarGeneral(1e-7,
 HF_GP_LL_SONNET_3D = SonnetMetalLayer((0, 2), "hf_gp_ll", 1, SonnetPlanarGeneral(1e-7, 0, 0, 20.0), 200.0)
 TIN_LL_SONNET_3D = SonnetMetalLayer((0, 3), "tin_ll", 1, SonnetPlanarGeneral(1e-7, 0, 0, 1.5), 105.0)
 HF_SONNET_3D = SonnetMetalLayer((1, 0), "hf", 0, SonnetPlanarGeneral(1e-7, 0, 0, 8.0), 200.0)
+HFTA_SONNET_3D = SonnetMetalLayer((1, 0), "hfta", 0, SonnetPlanarGeneral(1e-7, 0, 0, 20.0), 80.0)
 HF_LL_SONNET_3D = SonnetMetalLayer((1, 1), "hf_ll", 0, SonnetPlanarGeneral(1e-7, 0, 0, 20.0), 200.0)
 HF_VAR_SONNET_3D = SonnetMetalLayer((1, 1), "hf_var", 0, SonnetPlanarGeneral(1e-7, 0, 0, 200.0), 200.0)
 HF_VIA_SONNET_3D = SonnetViaLayer((2, 0), "hf_via", 0, None, 1)
@@ -47,6 +51,9 @@ def drawing_to_sonnet(cell: gdstk.Cell):
         p for p in cf.get_polygons() if p.layer == HF_GP.gds_layer[0] and p.datatype == HF_GP.gds_layer[1]
     ]
     hf = [p for p in cf.get_polygons() if p.layer == HF.gds_layer[0] and p.datatype == HF.gds_layer[1]]
+    hfta = [
+        p for p in cf.get_polygons() if p.layer == HFTA.gds_layer[0] and p.datatype == HFTA.gds_layer[1]
+    ]
     hf_gp_ll = [
         p
         for p in cf.get_polygons()
@@ -66,14 +73,16 @@ def drawing_to_sonnet(cell: gdstk.Cell):
     hf_gp_ll_sim = gdstk.boolean(hf_gp_ll, hf_gp_ll, "or", 0.00001, *HF_GP_LL_SONNET)
     tin_ll_sim = gdstk.boolean(tin_ll, tin_ll, "or", 0.00001, *TIN_LL_SONNET)
     hf_sim = gdstk.boolean(hf, atanb + tin_ll, "not", 0.00001, *HF_SONNET)
+    hfta_sim = gdstk.boolean(hfta, atanb + tin_ll, "not", 0.00001, *HFTA_SONNET)
     hf_ll_sim = gdstk.boolean(hf_ll, atanb + tin_ll, "not", 0.00001, *HF_LL_SONNET)
-    hf_var = [
-        p
-        for p in cf.get_polygons()
-        if p.layer == HF_VAR_SONNET.gds_layer[0] and p.datatype == HF_VAR_SONNET.gds_layer[1]
-    ]
+    hf_var = []
+    # hf_var = [
+    #     p
+    #     for p in cf.get_polygons()
+    #     if p.layer == HF_VAR_SONNET.gds_layer[0] and p.datatype == HF_VAR_SONNET.gds_layer[1]
+    # ]
 
-    cell_sim.add(*atanb_sim, *hf_gp_sim, *tin_ll_sim, *hf_sim, *hf_gp_ll_sim, *hf_ll_sim, *hf_var)
+    cell_sim.add(*atanb_sim, *hf_gp_sim, *tin_ll_sim, *hf_sim, *hfta_sim, *hf_gp_ll_sim, *hf_ll_sim, *hf_var)
     return cell_sim
 
 
@@ -112,11 +121,12 @@ def drawing_to_sonnet_3d(cell: gdstk.Cell):
     tin_ll_sim = gdstk.boolean(tin_ll, tin_ll, "or", 0.00001, *TIN_LL_SONNET_3D)
     hf_sim = gdstk.boolean(hf, hf, "or", 0.00001, *HF_SONNET_3D)
     hf_ll_sim = gdstk.boolean(hf_ll, hf_ll, "or", 0.00001, *HF_LL_SONNET_3D)
-    hf_var = [
-        p
-        for p in cf.get_polygons()
-        if p.layer == HF_VAR_SONNET_3D.gds_layer[0] and p.datatype == HF_VAR_SONNET_3D.gds_layer[1]
-    ]
+    hf_var = []
+    # hf_var = [
+    #     p
+    #     for p in cf.get_polygons()
+    #     if p.layer == HF_VAR_SONNET_3D.gds_layer[0] and p.datatype == HF_VAR_SONNET_3D.gds_layer[1]
+    # ]
     via_sim = gdstk.boolean(hf, hf_contact, "and", 0.00001, *HF_VIA_SONNET_3D)
 
     cell_sim.add(*atanb_sim, *hf_gp_sim, *hf_sim, *hf_gp_ll_sim, *hf_ll_sim, *hf_var, *via_sim, *tin_ll_sim)
